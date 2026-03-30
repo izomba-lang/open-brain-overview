@@ -11,6 +11,7 @@
 - **MCP-сервер** — подключается к Claude Desktop, ChatGPT, Cursor и любому AI-клиенту
 - **Chrome-расширение** — новая вкладка показывает топ-3 приоритетных задач
 - **Семантический поиск** — ищет по смыслу, а не по словам
+- **Система скиллов** — готовые "рецепты" для задач: meeting-brief, follow-up, weekly-report и другие. Можно создавать свои и импортировать из GitHub
 
 ## Архитектура
 
@@ -116,7 +117,32 @@ create trigger projects_updated_at
   for each row execute function update_updated_at();
 ```
 
-### 2.5. Создай функцию семантического поиска
+### 2.5. Создай таблицу skills
+
+```sql
+create table if not exists skills (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  description text not null,
+  trigger_patterns text[] not null default '{}',
+  client text not null default 'any',
+  skill_prompt text,
+  tools_required text[] not null default '{}',
+  category text not null default 'general',
+  embedding extensions.vector(1536),
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Индекс для семантического поиска скиллов
+create index if not exists skills_embedding_idx on skills
+  using hnsw (embedding extensions.vector_cosine_ops);
+
+create index if not exists skills_category_idx on skills (category);
+```
+
+### 2.6. Создай функцию семантического поиска
 
 ```sql
 create or replace function match_thoughts(
@@ -144,12 +170,56 @@ as $$
 $$;
 ```
 
-### 2.6. Отключи RLS (для Edge Functions с service role)
+### 2.7. Создай функцию поиска скиллов
+
+```sql
+create or replace function match_skills(
+  query_embedding extensions.vector(1536),
+  match_threshold float default 0.5,
+  match_count int default 5
+)
+returns table (
+  id uuid,
+  name text,
+  description text,
+  client text,
+  skill_prompt text,
+  tools_required text[],
+  category text,
+  trigger_patterns text[],
+  similarity float
+)
+language plpgsql stable
+set search_path = public, extensions
+as $$
+begin
+  return query
+  select
+    s.id,
+    s.name,
+    s.description,
+    s.client,
+    s.skill_prompt,
+    s.tools_required,
+    s.category,
+    s.trigger_patterns,
+    (1 - (s.embedding <=> query_embedding))::float as similarity
+  from skills s
+  where s.is_active = true
+    and 1 - (s.embedding <=> query_embedding) > match_threshold
+  order by s.embedding <=> query_embedding
+  limit match_count;
+end;
+$$;
+```
+
+### 2.8. Отключи RLS (для Edge Functions с service role)
 
 ```sql
 alter table public.thoughts enable row level security;
 alter table public.people enable row level security;
 alter table public.projects enable row level security;
+alter table public.skills enable row level security;
 
 -- Edge Functions используют service_role key, который обходит RLS
 -- Если хочешь дополнительную защиту, добавь policies
@@ -271,7 +341,21 @@ curl -s -X POST "https://<project-ref>.supabase.co/functions/v1/open-brain-mcp?k
 
 > Или используй любой MCP-клиент, который поддерживает HTTP transport.
 
-### Cursor / Claude Code
+### Cursor
+
+Создай файл `.cursor/mcp.json` в корне проекта:
+
+```json
+{
+  "mcpServers": {
+    "open-brain": {
+      "url": "https://<project-ref>.supabase.co/functions/v1/open-brain-mcp?key=<MCP_ACCESS_KEY>"
+    }
+  }
+}
+```
+
+### Claude Code
 
 Добавь в настройки MCP-серверов:
 - **URL**: `https://<project-ref>.supabase.co/functions/v1/open-brain-mcp?key=<MCP_ACCESS_KEY>`
@@ -303,13 +387,54 @@ curl -s -X POST "https://<project-ref>.supabase.co/functions/v1/open-brain-mcp?k
 | План на день | `/today` |
 | Список задач | `/tasks` |
 
-### MCP-сервер (через AI-клиента)
+### MCP-сервер (15 инструментов, через AI-клиента)
 
 - **"Запомни: завтра встреча с Петей в 15:00"** → `capture_thought`
 - **"Что я знаю про налоги?"** → `search_thoughts`
 - **"Покажи открытые задачи"** → `list_thoughts` (type: task)
 - **"Отметь задачу X как выполненную"** → `update_thought`
 - **"Создай проект Ремонт квартиры"** → `manage_project`
+- **"Подготовь бриф к встрече"** → `route_task` → подберёт скилл `meeting-brief`
+- **"Какие скиллы есть?"** → `list_skills`
+- **"Импортируй скилл из GitHub"** → `import_skill` (URL или текст)
+
+---
+
+## Скиллы — готовые рецепты для задач
+
+Скилл — это инструкция для AI, которая описывает шаги для конкретной задачи. Когда ты говоришь "подготовь бриф к встрече", `route_task` находит подходящий скилл и даёт AI готовый промпт.
+
+### Предустановленные скиллы
+
+| Скилл | Что делает |
+|-------|-----------|
+| `meeting-brief` | Собирает заметки, участников и задачи в бриф перед встречей |
+| `follow-up` | Формирует письмо-фоллоуап после встречи в твоём стиле |
+| `weekly-report` | Генерирует еженедельный отчёт из заметок за неделю |
+| `delegate-task` | Составляет чёткую постановку задачи для делегирования |
+| `decision-log` | Фиксирует решение с контекстом, альтернативами и обоснованием |
+| `draft-email` | Пишет email в твоём стиле на основе контекста из базы |
+
+### Импорт скиллов
+
+Можно импортировать скиллы из GitHub — система автоматически адаптирует их:
+
+```
+# Через AI-клиента (Claude Desktop, Cursor и т.д.):
+"Импортируй скилл из https://github.com/user/repo/blob/main/SKILL.md"
+```
+
+Или через MCP напрямую — `import_skill` принимает URL или текст описания скилла.
+
+### Создание своих скиллов
+
+Через AI-клиента:
+```
+"Создай скилл standup-summary: собирает задачи за последние 24 часа,
+группирует по проектам, формирует краткий отчёт для стендапа"
+```
+
+Или через `manage_skill` с описанием, trigger_patterns и промптом.
 
 ---
 
