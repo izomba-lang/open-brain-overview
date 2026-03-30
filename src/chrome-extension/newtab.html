@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Open Brain — Today</title>
-  <link rel="stylesheet" href="newtab.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Open Brain — Today</title>
+<link rel="stylesheet" href="newtab.css">
 </head>
 <body>
   <!-- Settings overlay -->
@@ -29,7 +29,9 @@
   <div class="container">
     <header>
       <p class="date" id="date"></p>
-      <button class="gear-btn" id="gear-btn" title="Настройки">⚙</button>
+      <div class="header-actions">
+        <button class="gear-btn" id="gear-btn" title="Настройки">⚙</button>
+      </div>
     </header>
 
     <main>
@@ -40,11 +42,52 @@
         <button id="setup-btn">Настроить</button>
       </div>
 
+      <!-- Focus view (default) -->
       <div id="focus" class="focus hidden">
         <h1 id="greeting"></h1>
         <p class="subtitle">Фокус на сегодня</p>
         <ol id="tasks" class="task-list"></ol>
         <p class="remaining hidden" id="remaining"></p>
+        <button id="explore-btn" class="explore-btn hidden">Explore ↓</button>
+      </div>
+
+      <!-- Explore dashboard -->
+      <div id="explore" class="explore hidden">
+        <button id="collapse-btn" class="collapse-btn">← Фокус</button>
+
+        <!-- Stats row -->
+        <div class="stats-row" id="stats-row"></div>
+
+        <!-- Projects -->
+        <section class="dash-section">
+          <h2 class="dash-title">Проекты</h2>
+          <div id="projects-list" class="projects-list"></div>
+        </section>
+
+        <!-- Activity heatmap -->
+        <section class="dash-section">
+          <h2 class="dash-title">Активность <span class="dash-dim">30 дней</span></h2>
+          <div id="heatmap" class="heatmap"></div>
+          <div class="heatmap-labels" id="heatmap-labels"></div>
+        </section>
+
+        <!-- Two-column: Areas + People -->
+        <div class="dash-grid">
+          <section class="dash-section">
+            <h2 class="dash-title">Области</h2>
+            <div id="areas-chart" class="bar-chart"></div>
+          </section>
+          <section class="dash-section">
+            <h2 class="dash-title">Люди</h2>
+            <div id="people-chart" class="bar-chart"></div>
+          </section>
+        </div>
+
+        <!-- Recent thoughts timeline -->
+        <section class="dash-section">
+          <h2 class="dash-title">Последние мысли</h2>
+          <div id="timeline" class="timeline"></div>
+        </section>
       </div>
     </main>
   </div>

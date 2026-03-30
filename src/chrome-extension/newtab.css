@@ -14,13 +14,23 @@ body {
   justify-content: center;
 }
 
+/* When explore is open, align to top */
+body.explore-open {
+  align-items: flex-start;
+}
+
 .container {
   max-width: 600px;
   width: 100%;
   padding: 40px 20px;
 }
 
-/* ── Header ─────────────────────────────────────── */
+body.explore-open .container {
+  max-width: 800px;
+  padding-top: 20px;
+}
+
+/* ── Header ─────────────────────────────────── */
 
 header {
   position: fixed;
@@ -29,6 +39,12 @@ header {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .date {
@@ -51,7 +67,7 @@ header {
   color: #666;
 }
 
-/* ── Main content ───────────────────────────────── */
+/* ── Main content ───────────────────────────── */
 
 main {
   display: flex;
@@ -109,7 +125,7 @@ main {
   display: none !important;
 }
 
-/* ── Focus section ──────────────────────────────── */
+/* ── Focus section ──────────────────────────── */
 
 .focus {
   text-align: center;
@@ -130,7 +146,7 @@ main {
   letter-spacing: 1.5px;
 }
 
-/* ── Task list ──────────────────────────────────── */
+/* ── Task list ──────────────────────────────── */
 
 .task-list {
   list-style: none;
@@ -212,7 +228,7 @@ main {
   color: #1a1a1a;
 }
 
-/* ── Leave / Enter animations ───────────────────── */
+/* ── Leave / Enter animations ───────────────── */
 
 .task-item.leaving {
   animation: slideOut 0.5s ease forwards;
@@ -232,7 +248,7 @@ main {
   100% { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Checkbox ───────────────────────────────────── */
+/* ── Checkbox ───────────────────────────────── */
 
 .task-check {
   width: 22px;
@@ -263,7 +279,7 @@ main {
   font-size: 12px;
 }
 
-/* ── Remaining count ────────────────────────────── */
+/* ── Remaining count ────────────────────────── */
 
 .remaining {
   font-size: 13px;
@@ -272,7 +288,48 @@ main {
   text-align: center;
 }
 
-/* ── Settings overlay ───────────────────────────── */
+/* ── Explore button ─────────────────────────── */
+
+.explore-btn {
+  margin-top: 40px;
+  background: none;
+  border: 1px solid #222;
+  color: #555;
+  padding: 10px 32px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s;
+  font-family: inherit;
+}
+
+.explore-btn:hover {
+  border-color: #444;
+  color: #aaa;
+}
+
+/* ── Collapse button ────────────────────────── */
+
+.collapse-btn {
+  background: none;
+  border: 1px solid #222;
+  color: #555;
+  padding: 8px 24px;
+  border-radius: 16px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 28px;
+  font-family: inherit;
+}
+
+.collapse-btn:hover {
+  border-color: #444;
+  color: #aaa;
+}
+
+/* ── Settings overlay ───────────────────────── */
 
 .settings-overlay {
   position: fixed;
@@ -331,4 +388,336 @@ main {
   gap: 8px;
   margin-top: 20px;
   justify-content: flex-end;
+}
+
+/* ══════════════════════════════════════════════
+   EXPLORE DASHBOARD
+   ══════════════════════════════════════════════ */
+
+.explore {
+  width: 100%;
+  animation: fadeIn 0.3s ease;
+}
+
+/* ── Stats row ──────────────────────────────── */
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background: #161618;
+  border: 1px solid #1e1e24;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-sub {
+  font-size: 11px;
+  color: #3a3a3a;
+  margin-top: 4px;
+}
+
+.stat-sub.positive {
+  color: #2d6a4f;
+}
+
+/* ── Dashboard sections ─────────────────────── */
+
+.dash-section {
+  margin-bottom: 32px;
+}
+
+.dash-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 16px;
+}
+
+.dash-dim {
+  font-weight: 400;
+  color: #333;
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+/* ── Projects ───────────────────────────────── */
+
+.projects-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.project-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #161618;
+  border: 1px solid #1e1e24;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.project-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.project-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: #ddd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-meta {
+  font-size: 12px;
+  color: #444;
+  margin-top: 2px;
+}
+
+.project-bar-wrap {
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.project-bar-bg {
+  height: 6px;
+  background: #1e1e24;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.project-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+
+.project-bar-fill.green { background: #2d6a4f; }
+.project-bar-fill.blue { background: #3a5ba0; }
+.project-bar-fill.orange { background: #8a6520; }
+.project-bar-fill.dim { background: #333; }
+
+.project-count {
+  font-size: 12px;
+  color: #555;
+  margin-top: 3px;
+  text-align: right;
+}
+
+.project-deadline {
+  font-size: 13px;
+  color: #444;
+  flex-shrink: 0;
+  min-width: 50px;
+  text-align: right;
+}
+
+.project-deadline.urgent {
+  color: #c44;
+}
+
+.project-deadline.soon {
+  color: #b88a2a;
+}
+
+.project-status {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.project-status.active { background: #1a2e1a; color: #4a8a4a; }
+.project-status.paused { background: #2a2a1a; color: #8a8a4a; }
+.project-status.completed { background: #1a1a2a; color: #6a6aaa; }
+
+/* ── Heatmap ────────────────────────────────── */
+
+.heatmap {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.heatmap-day {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background: #161618;
+  position: relative;
+}
+
+.heatmap-day.l1 { background: #1a2e1a; }
+.heatmap-day.l2 { background: #2a4a2a; }
+.heatmap-day.l3 { background: #3a6a3a; }
+.heatmap-day.l4 { background: #4a8a4a; }
+
+.heatmap-day:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #222;
+  color: #ccc;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.heatmap-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #333;
+}
+
+/* ── Bar chart (areas, people) ──────────────── */
+
+.bar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bar-label {
+  font-size: 13px;
+  color: #888;
+  min-width: 80px;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bar-track {
+  flex: 1;
+  height: 8px;
+  background: #1a1a1a;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.bar-fill.work { background: #3a5ba0; }
+.bar-fill.personal { background: #6a4a8a; }
+.bar-fill.learning { background: #2d6a4f; }
+.bar-fill.health { background: #4a8a4a; }
+.bar-fill.finance { background: #8a6520; }
+.bar-fill.social { background: #8a4a5a; }
+.bar-fill.people { background: #4a6a8a; }
+
+.bar-value {
+  font-size: 12px;
+  color: #444;
+  min-width: 32px;
+}
+
+/* ── Timeline ───────────────────────────────── */
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.timeline-date {
+  font-size: 12px;
+  color: #333;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.timeline-date:first-child {
+  margin-top: 0;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.timeline-item:hover {
+  background: #161618;
+}
+
+.timeline-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+  padding-top: 1px;
+}
+
+.timeline-content {
+  font-size: 14px;
+  color: #aaa;
+  line-height: 1.5;
+}
+
+.timeline-topic {
+  font-size: 11px;
+  color: #444;
+  margin-left: 8px;
+}
+
+/* ── Empty state ────────────────────────────── */
+
+.dash-empty {
+  font-size: 13px;
+  color: #333;
+  font-style: italic;
 }
