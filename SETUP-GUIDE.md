@@ -254,20 +254,41 @@ npm install -g supabase
 supabase login
 ```
 
-## Шаг 5. Склонируй и задеплой
+## Шаг 5. Создай проект и задеплой
+
+### 5.1. Создай структуру проекта
+
+Весь исходный код лежит в папке [`src/`](src/) этого репозитория. Скопируй его к себе:
 
 ```bash
-git clone https://github.com/izomba-lang/Open-Brain.git
-cd Open-Brain
+# Вариант 1: клонируй этот репозиторий
+git clone https://github.com/izomba-lang/open-brain-overview.git
+cd open-brain-overview/src
+
+# Вариант 2: скачай только src/ через GitHub
 ```
 
-### 5.1. Привяжи к своему проекту
+Структура:
+```
+src/
+├── supabase/functions/
+│   ├── open-brain-mcp/index.ts       ← MCP-сервер (15 инструментов)
+│   ├── ingest-thought-telegram/index.ts ← Telegram-бот
+│   └── ingest-thought/index.ts        ← Slack-пайплайн (опционально)
+├── supabase/migrations/               ← SQL-миграция для skills
+├── chrome-extension/                  ← Chrome new tab dashboard
+└── deploy.sh                          ← Скрипт деплоя с версионированием
+```
+
+### 5.2. Инициализируй Supabase-проект
 
 ```bash
+cd src
+supabase init
 supabase link --project-ref <твой-project-ref>
 ```
 
-### 5.2. Установи секреты
+### 5.3. Установи секреты
 
 ```bash
 supabase secrets set \
@@ -278,7 +299,7 @@ supabase secrets set \
   GROQ_API_KEY="gsk_..."
 ```
 
-### 5.3. Задеплой функции
+### 5.4. Задеплой функции
 
 ```bash
 supabase functions deploy open-brain-mcp --no-verify-jwt
@@ -288,6 +309,11 @@ supabase functions deploy ingest-thought-telegram --no-verify-jwt
 Slack-функция опциональна:
 ```bash
 supabase functions deploy ingest-thought --no-verify-jwt
+```
+
+Или используй скрипт деплоя:
+```bash
+bash deploy.sh  # деплоит все функции + версионирование
 ```
 
 ## Шаг 6. Подключи Telegram-бота

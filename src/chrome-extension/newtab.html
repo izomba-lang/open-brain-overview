@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open Brain — Today</title>
+  <link rel="stylesheet" href="newtab.css">
+</head>
+<body>
+  <!-- Settings overlay -->
+  <div id="settings-overlay" class="settings-overlay hidden">
+    <div class="settings-card">
+      <h2>Настройки</h2>
+      <label>
+        MCP Endpoint
+        <input type="text" id="settings-endpoint" placeholder="https://xxx.supabase.co/functions/v1/open-brain-mcp">
+      </label>
+      <label>
+        API Key
+        <input type="password" id="settings-key" placeholder="your-mcp-key">
+      </label>
+      <div class="settings-actions">
+        <button id="settings-save">Сохранить</button>
+        <button id="settings-cancel" class="secondary">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <header>
+      <p class="date" id="date"></p>
+      <button class="gear-btn" id="gear-btn" title="Настройки">⚙</button>
+    </header>
+
+    <main>
+      <div id="loading" class="loading">Загружаю...</div>
+      <div id="error" class="error hidden"></div>
+      <div id="no-config" class="no-config hidden">
+        <p>Настрой подключение к Open Brain</p>
+        <button id="setup-btn">Настроить</button>
+      </div>
+
+      <div id="focus" class="focus hidden">
+        <h1 id="greeting"></h1>
+        <p class="subtitle">Фокус на сегодня</p>
+        <ol id="tasks" class="task-list"></ol>
+        <p class="remaining hidden" id="remaining"></p>
+      </div>
+    </main>
+  </div>
+
+  <script src="newtab.js"></script>
+</body>
+</html>

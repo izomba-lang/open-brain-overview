@@ -1,0 +1,334 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #0f0f0f;
+  color: #e0e0e0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.container {
+  max-width: 600px;
+  width: 100%;
+  padding: 40px 20px;
+}
+
+/* ── Header ─────────────────────────────────────── */
+
+header {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.date {
+  font-size: 13px;
+  color: #444;
+}
+
+.gear-btn {
+  background: none;
+  border: none;
+  color: #333;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.gear-btn:hover {
+  color: #666;
+}
+
+/* ── Main content ───────────────────────────────── */
+
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.loading {
+  color: #333;
+  font-size: 14px;
+}
+
+.error {
+  background: #1a1111;
+  color: #c66;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.no-config {
+  text-align: center;
+}
+
+.no-config p {
+  color: #555;
+  font-size: 15px;
+  margin-bottom: 16px;
+}
+
+.no-config button,
+.settings-actions button {
+  background: #fff;
+  color: #000;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.no-config button:hover,
+.settings-actions button:hover {
+  opacity: 0.85;
+}
+
+.settings-actions button.secondary {
+  background: #2a2a2a;
+  color: #ccc;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ── Focus section ──────────────────────────────── */
+
+.focus {
+  text-align: center;
+}
+
+.focus h1 {
+  font-size: 32px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #444;
+  margin-bottom: 48px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+/* ── Task list ──────────────────────────────────── */
+
+.task-list {
+  list-style: none;
+  counter-reset: tasks;
+  text-align: left;
+  width: 100%;
+}
+
+.task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 32px;
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.task-item:nth-child(1) { animation-delay: 0.05s; }
+.task-item:nth-child(2) { animation-delay: 0.15s; }
+.task-item:nth-child(3) { animation-delay: 0.25s; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.task-number {
+  font-size: 32px;
+  font-weight: 700;
+  color: #222;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 36px;
+  text-align: right;
+}
+
+.task-body {
+  flex: 1;
+  padding-top: 4px;
+}
+
+.task-text {
+  font-size: 18px;
+  line-height: 1.5;
+  color: #ddd;
+}
+
+.task-tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.task-project {
+  display: inline-block;
+  font-size: 12px;
+  color: #555;
+  padding: 2px 10px;
+  background: #1a1a1a;
+  border-radius: 12px;
+}
+
+.task-skill {
+  display: inline-block;
+  font-size: 11px;
+  color: #7b6cb7;
+  padding: 2px 10px;
+  background: #1a1520;
+  border-radius: 12px;
+  letter-spacing: 0.3px;
+}
+
+.task-item.checked .task-text {
+  text-decoration: line-through;
+  color: #444;
+}
+
+.task-item.checked .task-number {
+  color: #1a1a1a;
+}
+
+/* ── Leave / Enter animations ───────────────────── */
+
+.task-item.leaving {
+  animation: slideOut 0.5s ease forwards;
+}
+
+.task-item.entering {
+  animation: slideIn 0.4s ease forwards;
+}
+
+@keyframes slideOut {
+  0%   { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(40px); max-height: 0; margin: 0; padding: 0; overflow: hidden; }
+}
+
+@keyframes slideIn {
+  0%   { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Checkbox ───────────────────────────────────── */
+
+.task-check {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #2a2a2a;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-check:hover {
+  border-color: #555;
+}
+
+.task-check.done {
+  background: #2a2a2a;
+  border-color: #444;
+}
+
+.task-check.done::after {
+  content: "✓";
+  color: #666;
+  font-size: 12px;
+}
+
+/* ── Remaining count ────────────────────────────── */
+
+.remaining {
+  font-size: 13px;
+  color: #333;
+  margin-top: 16px;
+  text-align: center;
+}
+
+/* ── Settings overlay ───────────────────────────── */
+
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.settings-card {
+  background: #1a1a1a;
+  border-radius: 12px;
+  padding: 28px;
+  width: 420px;
+  max-width: 90vw;
+}
+
+.settings-card h2 {
+  font-size: 18px;
+  color: #fff;
+  margin-bottom: 20px;
+}
+
+.settings-card label {
+  display: block;
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 14px;
+}
+
+.settings-card input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: #0f0f0f;
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #e0e0e0;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.settings-card input:focus {
+  outline: none;
+  border-color: #555;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+  justify-content: flex-end;
+}

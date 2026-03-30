@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Open Brain — Today",
+  "version": "1.0.0",
+  "description": "Your daily tasks dashboard powered by Open Brain",
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://*.supabase.co/*"
+  ],
+  "icons": {
+    "128": "icon128.png"
+  }
+}
