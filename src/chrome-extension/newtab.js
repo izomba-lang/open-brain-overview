@@ -99,6 +99,13 @@ function pickTopTasks(tasks, projects) {
     if (meta.status === "in_progress") score += 1000;
     if (meta.linked_projects?.length > 0) score += 200;
 
+    // Work tasks get priority during work hours (8-19)
+    const hour = new Date().getHours();
+    const isWorkHours = hour >= 8 && hour < 19;
+    const area = meta.area || "personal";
+    if (isWorkHours && area === "work") score += 150;
+    if (isWorkHours && area === "finance") score += 100;
+
     const ageMs = Date.now() - new Date(task.created_at).getTime();
     const ageDays = ageMs / (1000 * 60 * 60 * 24);
     if (ageDays < 1) score += 100;
@@ -124,16 +131,18 @@ function pickTopTasks(tasks, projects) {
       if (content.includes("дедлайн") || content.includes("deadline")) score += 100;
     }
 
-    if (
+    // Blocked/waiting penalty — softer (-150), and skip if task has a deadline
+    const isBlocked =
       content.includes("после завершения") ||
       content.includes("после получения") ||
       content.includes("после координации") ||
       content.includes("ждём") ||
       content.includes("когда будет") ||
       content.includes("пришлёт") ||
-      content.includes("ожидаю получить")
-    ) {
-      score -= 300;
+      content.includes("ожидаю получить");
+
+    if (isBlocked && !deadlineDate) {
+      score -= 150;
     }
 
     if (content.includes("постоянная задача")) {
