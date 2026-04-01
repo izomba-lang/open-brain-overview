@@ -40,12 +40,10 @@
   html[lang="en"] .lang-ru-block { display: none; }
   .lang-en-block { display: none; }
   .lang-ru-block { display: block; }
-  /* flex variants */
   html[lang="en"] .lang-en-flex { display: flex; }
   html[lang="en"] .lang-ru-flex { display: none; }
   .lang-en-flex { display: none; }
   .lang-ru-flex { display: flex; }
-  /* grid variants */
   html[lang="en"] .lang-en-grid { display: grid; }
   html[lang="en"] .lang-ru-grid { display: none; }
   .lang-en-grid { display: none; }
@@ -209,7 +207,6 @@
   .accent-pink .number { color: var(--pink); }
   .accent-blue .number { color: var(--blue); }
 
-  /* Simplified flow */
   .flow {
     display: flex;
     align-items: center;
@@ -290,7 +287,6 @@
   .badge-wip { background: rgba(253,203,110,0.15); color: var(--orange); }
   .badge-planned { background: rgba(162,155,254,0.15); color: var(--accent2); }
 
-  /* Quote block */
   .quote-block {
     max-width: 720px;
     margin: 0 auto;
@@ -318,6 +314,44 @@
   }
 
   .quote-block .attribution a:hover { text-decoration: underline; }
+
+  /* Inline quote for slides */
+  .inline-quote {
+    background: var(--surface);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 12px 12px 0;
+    padding: 16px 24px;
+    margin: 12px 0;
+    font-style: italic;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .inline-quote .quote-src {
+    display: block;
+    font-style: normal;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 8px;
+  }
+
+  /* Routine cycle */
+  .routine-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    position: relative;
+  }
+
+  .routine-card .routine-time {
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
 
   /* Nav */
   .nav {
@@ -362,16 +396,18 @@
   <button id="btn-en" onclick="setLang('en')">EN</button>
 </div>
 
-<!-- SLIDE 1: Title -->
+<!-- ============================================ -->
+<!-- SLIDE 1: Hook -->
+<!-- ============================================ -->
 <section class="slide title-slide" id="s1">
-  <div class="slide-number">01 / 17</div>
+  <div class="slide-number">01 / 14</div>
   <h1 style="font-size: 44px; line-height: 1.3; letter-spacing: -1px;">
     <span class="lang-ru">Представьте, что ваш AI<br>знает о вас <em style="font-style: normal; background: linear-gradient(135deg, var(--accent2), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">всё</em></span>
     <span class="lang-en">Imagine your AI<br>knows <em style="font-style: normal; background: linear-gradient(135deg, var(--accent2), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">everything</em> about you</span>
   </h1>
   <p class="subtitle" style="font-size: 18px; max-width: 640px; margin: 0 auto 20px; line-height: 1.7;">
-    <span class="lang-ru">Ваши мысли, задачи, результаты встреч, инсайты из документов, договорённости с коллегами, контекст каждого проекта. Всё, что вас беспокоит &mdash; прямо сейчас.</span>
-    <span class="lang-en">Your thoughts, tasks, meeting outcomes, document insights, agreements with colleagues, the context of every project. Everything on your mind &mdash; right now.</span>
+    <span class="lang-ru">Ваши мысли, задачи, результаты встреч, инсайты из документов, договорённости с коллегами, контекст каждого проекта. Всё, что вас беспокоит &mdash; прямо сейчас. И работает, пока вы спите.</span>
+    <span class="lang-en">Your thoughts, tasks, meeting outcomes, document insights, agreements with colleagues, the context of every project. Everything on your mind &mdash; right now. And it works while you sleep.</span>
   </p>
   <p style="font-size: 17px; color: var(--text-dim); max-width: 580px; margin: 0 auto 40px; line-height: 1.7;">
     <span class="lang-ru">Насколько точнее были бы его подсказки? Насколько меньше времени вы тратили бы на объяснения, повторы, поиск? Насколько быстрее двигались бы ваши проекты?</span>
@@ -394,9 +430,11 @@
   </div>
 </section>
 
-<!-- SLIDE 2: Inspiration -->
+<!-- ============================================ -->
+<!-- SLIDE 2: How it all started -->
+<!-- ============================================ -->
 <section class="slide" id="s2">
-  <div class="slide-number">02 / 17</div>
+  <div class="slide-number">02 / 14</div>
   <h2>
     <span class="lang-ru">С чего всё началось</span>
     <span class="lang-en">How it all started</span>
@@ -446,40 +484,143 @@
   </div>
 </section>
 
-<!-- SLIDE 3: Problem / Solution -->
+<!-- ============================================ -->
+<!-- ACT 1: Claude is already powerful -->
+<!-- ============================================ -->
+
+<!-- SLIDE 3: Claude/Cowork — already powerful -->
 <section class="slide" id="s3">
-  <div class="slide-number">03 / 17</div>
+  <div class="slide-number">03 / 14</div>
   <h2>
-    <span class="lang-ru">Проблема <span class="dim">и решение</span></span>
-    <span class="lang-en">Problem <span class="dim">and solution</span></span>
+    <span class="lang-ru">Claude уже мощный <span class="dim">сам по себе</span></span>
+    <span class="lang-en">Claude is already powerful <span class="dim">on its own</span></span>
   </h2>
-  <div class="grid-2">
-    <div class="card">
-      <h3>
-        <span class="lang-ru">Как сейчас у большинства</span>
-        <span class="lang-en">How most people work today</span>
-      </h3>
-      <p>
-        <span class="lang-ru">Знания разбросаны по Slack, email, встречам, заметкам. Каждый AI-чат начинается с нуля &mdash; ты повторяешь контекст снова и снова. Переключился с Claude на ChatGPT &mdash; и всё потеряно. Провёл встречу &mdash; через неделю не помнишь ключевых решений.</span>
-        <span class="lang-en">Knowledge is scattered across Slack, email, meetings, and notes. Every AI chat starts from zero &mdash; you repeat context over and over. Switch from Claude to ChatGPT &mdash; and everything is lost. Had a meeting &mdash; a week later you can't remember the key decisions.</span>
+
+  <div class="grid-2" style="max-width: 960px; margin: 0 auto; align-items: start;">
+    <!-- Case 1: Tax documents -->
+    <div class="card" style="border-left: 3px solid var(--green);">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+        <span class="tag highlight" style="margin: 0;">
+          <span class="lang-ru">Кейс</span>
+          <span class="lang-en">Case</span>
+        </span>
+        <span style="font-size: 14px; color: var(--text-dim);">
+          <span class="lang-ru">38 налоговых документов</span>
+          <span class="lang-en">38 tax documents</span>
+        </span>
+      </div>
+      <p style="font-size: 15px; color: var(--text-dim); line-height: 1.7; margin-bottom: 16px;">
+        <span class="lang-ru">Получил неструктурированное сообщение от налогового адвоката &mdash; что нужно для подачи. С помощью Claude составил 3 запроса в HR (два на русском, один на английском) для разных людей. В ответ получил 38 файлов разного формата. Загрузил в Cowork &mdash; Claude сам переименовал все файлы, разложил по папкам, составил полную опись с хронологией и проверил полноту пакета.</span>
+        <span class="lang-en">Got an unstructured message from a tax lawyer &mdash; what's needed for filing. With Claude's help, composed 3 HR requests (two in Russian, one in English) for different people. Got back 38 files in various formats. Uploaded to Cowork &mdash; Claude renamed every file, sorted into folders, created a full inventory with chronology, and checked the package for completeness.</span>
       </p>
+      <div class="inline-quote">
+        <span class="lang-ru">&laquo;Пару дней бы точно безвылазно сидел над этим&raquo;</span>
+        <span class="lang-en">"I would've easily spent a couple of days on this non-stop"</span>
+      </div>
     </div>
-    <div class="card" style="border-color: var(--accent);">
-      <h3>Open Brain</h3>
-      <p>
-        <span class="lang-ru">Одна база, которую видит любой AI. Claude, ChatGPT, Cowork &mdash; все работают с одной памятью. Сохранил мысль из Telegram &mdash; Claude её найдёт. Провёл встречу в Granola &mdash; инсайты уже в базе. Попросил &laquo;что мы решили по Беларуси?&raquo; &mdash; получил ответ.</span>
-        <span class="lang-en">One database visible to any AI. Claude, ChatGPT, Cowork &mdash; all work with the same memory. Saved a thought from Telegram &mdash; Claude will find it. Had a meeting in Granola &mdash; insights are already in the database. Ask "what did we decide about Belarus?" &mdash; get an answer.</span>
+
+    <!-- Case 2: Claude Code + WhatsApp -->
+    <div class="card" style="border-left: 3px solid var(--accent2);">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+        <span class="tag highlight" style="margin: 0;">
+          <span class="lang-ru">Кейс</span>
+          <span class="lang-en">Case</span>
+        </span>
+        <span style="font-size: 14px; color: var(--text-dim);">
+          <span class="lang-ru">Claude Code + WhatsApp за 5 минут</span>
+          <span class="lang-en">Claude Code + WhatsApp in 5 minutes</span>
+        </span>
+      </div>
+      <p style="font-size: 15px; color: var(--text-dim); line-height: 1.7; margin-bottom: 16px;">
+        <span class="lang-ru">Задача: подключить WhatsApp к системе коннекторов. Написал задачу текстом &mdash; Claude Code сам нашёл нужную библиотеку, установил, столкнулся с ошибкой, обновил зависимости, передебажил, запустил. Без единой команды в терминале вручную.</span>
+        <span class="lang-en">Task: connect WhatsApp to the connector system. Described the task in plain text &mdash; Claude Code found the right library, installed it, hit an error, updated dependencies, debugged, and launched. Without a single manual terminal command.</span>
       </p>
+      <div style="font-size: 14px; color: var(--green); margin-top: 12px; font-weight: 600;">
+        <span class="lang-ru">5 минут вместо рабочего дня разработчика</span>
+        <span class="lang-en">5 minutes instead of a developer's full workday</span>
+      </div>
+    </div>
+  </div>
+
+  <p style="text-align: center; margin-top: 40px; font-size: 18px; max-width: 700px; margin-left: auto; margin-right: auto;">
+    <span class="lang-ru" style="color: var(--orange);">Если вы используете AI как поисковик &mdash; вы не используете и 10% возможностей.</span>
+    <span class="lang-en" style="color: var(--orange);">If you're using AI as a search engine &mdash; you're not using even 10% of its capabilities.</span>
+  </p>
+</section>
+
+<!-- ============================================ -->
+<!-- ACT 2: The amnesia problem -->
+<!-- ============================================ -->
+
+<!-- SLIDE 4: But it has amnesia -->
+<section class="slide" id="s4">
+  <div class="slide-number">04 / 14</div>
+  <h2>
+    <span class="lang-ru">Но у него амнезия</span>
+    <span class="lang-en">But it has amnesia</span>
+  </h2>
+
+  <div style="max-width: 800px; margin: 0 auto;">
+    <div style="display: flex; flex-direction: column; gap: 20px; margin-bottom: 40px;">
+      <div class="inline-quote" style="border-left-color: var(--pink);">
+        <span class="lang-ru">&laquo;Мой стопор с ChatGPT был в том, что мне было лень ему объяснять контекст. Пока дообъяснишь, что надо &mdash; проще самому сделать&raquo;</span>
+        <span class="lang-en">"My bottleneck with ChatGPT was that I was too lazy to explain the context. By the time you finish explaining what's needed &mdash; it's easier to just do it yourself"</span>
+      </div>
+      <div class="inline-quote" style="border-left-color: var(--orange);">
+        <span class="lang-ru">&laquo;Чат &mdash; это как Google Поиск. Нет памяти&raquo;</span>
+        <span class="lang-en">"Chat is like Google Search. No memory"</span>
+      </div>
+      <div class="inline-quote" style="border-left-color: var(--text-dim);">
+        <span class="lang-ru">&laquo;Я записываю заметки в Apple Notes &mdash; это днище&raquo;</span>
+        <span class="lang-en">"I take notes in Apple Notes &mdash; it's the absolute worst"</span>
+      </div>
+    </div>
+
+    <div class="grid-2" style="gap: 24px;">
+      <div class="card" style="background: rgba(253,121,168,0.05); border-color: rgba(253,121,168,0.3);">
+        <h3 style="color: var(--pink);">
+          <span class="lang-ru">Знакомо?</span>
+          <span class="lang-en">Sound familiar?</span>
+        </h3>
+        <div style="display: flex; flex-direction: column; gap: 12px; font-size: 15px; color: var(--text-dim);">
+          <div>
+            <span class="lang-ru">&bull; Переключился с Claude на ChatGPT &mdash; всё потеряно</span>
+            <span class="lang-en">&bull; Switched from Claude to ChatGPT &mdash; everything is lost</span>
+          </div>
+          <div>
+            <span class="lang-ru">&bull; Провёл встречу &mdash; через неделю не помнишь решений</span>
+            <span class="lang-en">&bull; Had a meeting &mdash; a week later can't remember the decisions</span>
+          </div>
+          <div>
+            <span class="lang-ru">&bull; Каждый чат начинается с нуля &mdash; повторяешь контекст снова</span>
+            <span class="lang-en">&bull; Every chat starts from zero &mdash; you repeat the context again</span>
+          </div>
+          <div>
+            <span class="lang-ru">&bull; Знания разбросаны по Slack, email, заметкам, мессенджерам</span>
+            <span class="lang-en">&bull; Knowledge scattered across Slack, email, notes, messengers</span>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="background: rgba(0,184,148,0.05); border-color: rgba(0,184,148,0.3);">
+        <h3 style="color: var(--green);">
+          <span class="lang-ru">Главная задача</span>
+          <span class="lang-en">The key challenge</span>
+        </h3>
+        <p style="font-size: 16px; color: var(--text-dim); line-height: 1.7;">
+          <span class="lang-ru">Сделать так, чтобы контекст всегда был актуален. Без этого даже самый умный AI работает вслепую.<br><br><strong style="color: var(--green);">Нужна единая память, которую видит любой AI.</strong></span>
+          <span class="lang-en">Keep the context always up to date. Without it, even the smartest AI works blind.<br><br><strong style="color: var(--green);">What's needed is a unified memory that any AI can access.</strong></span>
+        </p>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- SLIDE 4: How it works (simplified) -->
-<section class="slide" id="s4">
-  <div class="slide-number">04 / 17</div>
+<!-- SLIDE 5: Open Brain = persistent memory -->
+<section class="slide" id="s5">
+  <div class="slide-number">05 / 14</div>
   <h2>
-    <span class="lang-ru">Как это устроено <span class="dim">простыми словами</span></span>
-    <span class="lang-en">How it works <span class="dim">in simple terms</span></span>
+    <span class="lang-ru">Open Brain <span class="dim">= постоянная память</span></span>
+    <span class="lang-en">Open Brain <span class="dim">= persistent memory</span></span>
   </h2>
 
   <div class="flow">
@@ -546,15 +687,212 @@
   </div>
 </section>
 
-<!-- SLIDE 5: Jobs to be done -->
-<section class="slide" id="s5">
-  <div class="slide-number">05 / 17</div>
+<!-- ============================================ -->
+<!-- ACT 3: Together = nuclear mix -->
+<!-- ============================================ -->
+
+<!-- SLIDE 6: Together — a different level -->
+<section class="slide" id="s6">
+  <div class="slide-number">06 / 14</div>
   <h2>
-    <span class="lang-ru">Что это даёт <span class="dim">jobs to be done</span></span>
-    <span class="lang-en">What it does <span class="dim">jobs to be done</span></span>
+    <span class="lang-ru">Вместе &mdash; <span class="dim">совсем другой уровень</span></span>
+    <span class="lang-en">Together &mdash; <span class="dim">a whole different level</span></span>
   </h2>
 
-  <div class="grid-3">
+  <div style="max-width: 800px; margin: 0 auto;">
+    <div class="card" style="border-left: 3px solid var(--accent2); margin-bottom: 24px;">
+      <h3>
+        <span class="lang-ru">Подготовка к встрече за 30 секунд</span>
+        <span class="lang-en">Meeting prep in 30 seconds</span>
+      </h3>
+      <p style="font-size: 15px; color: var(--text-dim); line-height: 1.7; margin-bottom: 20px;">
+        <span class="lang-ru">Голосовой запрос: &laquo;У меня встреча с Кириллом, выгрузи всё, что нужно знать&raquo;. Claude обходит календарь, почту, Telegram, Open Brain. Выдаёт полное досье: кто это, история взаимодействий, предыдущие договорённости, открытые вопросы.</span>
+        <span class="lang-en">Voice request: "I have a meeting with Kirill, pull up everything I need to know." Claude checks calendar, email, Telegram, Open Brain. Delivers a full dossier: who they are, interaction history, past agreements, open questions.</span>
+      </p>
+      <div style="display: flex; gap: 16px; font-size: 14px;">
+        <div style="flex: 1; background: rgba(253,121,168,0.08); border-radius: 8px; padding: 16px; text-align: center;">
+          <div style="color: var(--pink); font-weight: 600; margin-bottom: 8px;">
+            <span class="lang-ru">Без Open Brain</span>
+            <span class="lang-en">Without Open Brain</span>
+          </div>
+          <div style="color: var(--text-dim); line-height: 1.5;">
+            <span class="lang-ru">Только почта и календарь. Кто этот человек? Что обсуждали? Надо вспоминать самому.</span>
+            <span class="lang-en">Only email and calendar. Who is this person? What did we discuss? You have to remember on your own.</span>
+          </div>
+        </div>
+        <div style="flex: 1; background: rgba(0,184,148,0.08); border-radius: 8px; padding: 16px; text-align: center;">
+          <div style="color: var(--green); font-weight: 600; margin-bottom: 8px;">
+            <span class="lang-ru">С Open Brain</span>
+            <span class="lang-en">With Open Brain</span>
+          </div>
+          <div style="color: var(--text-dim); line-height: 1.5;">
+            <span class="lang-ru">Вся история: встречи, переписки, решения, задачи, контекст отношений. Полный бриф за секунды.</span>
+            <span class="lang-en">Full history: meetings, messages, decisions, tasks, relationship context. Complete brief in seconds.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p style="text-align: center; font-size: 17px; color: var(--text-dim); line-height: 1.7;">
+      <span class="lang-ru">Claude сам по себе &mdash; мощный инструмент. Но когда добавляешь <strong style="color: var(--accent2);">персональный контекст</strong> &mdash; получаешь то, что не может дать ни один человек-ассистент: мгновенный доступ ко всей твоей рабочей памяти.</span>
+      <span class="lang-en">Claude on its own is a powerful tool. But when you add <strong style="color: var(--accent2);">personal context</strong> &mdash; you get something no human assistant can provide: instant access to your entire working memory.</span>
+    </p>
+  </div>
+</section>
+
+<!-- SLIDE 7: Autonomous routines -->
+<section class="slide" id="s7">
+  <div class="slide-number">07 / 14</div>
+  <h2>
+    <span class="lang-ru">Автономные рутины <span class="dim">работает, пока вы спите</span></span>
+    <span class="lang-en">Autonomous routines <span class="dim">works while you sleep</span></span>
+  </h2>
+
+  <div class="grid-3" style="max-width: 960px; margin: 0 auto;">
+    <div class="routine-card" style="border-left: 3px solid var(--orange);">
+      <div class="routine-time" style="color: var(--orange);">
+        <span class="lang-ru">~22:00 &middot; Вечер</span>
+        <span class="lang-en">~10 PM &middot; Evening</span>
+      </div>
+      <h3 style="font-size: 18px;">
+        <span class="lang-ru">Дайджест дня</span>
+        <span class="lang-en">Daily digest</span>
+      </h3>
+      <p style="font-size: 14px; color: var(--text-dim); line-height: 1.6;">
+        <span class="lang-ru">Обходит почту, Telegram, WhatsApp, транскрипты встреч из Granola. Сохраняет значимое в Open Brain. Шлёт сводку в Telegram.</span>
+        <span class="lang-en">Scans email, Telegram, WhatsApp, Granola meeting transcripts. Saves meaningful items to Open Brain. Sends summary to Telegram.</span>
+      </p>
+    </div>
+
+    <div class="routine-card" style="border-left: 3px solid var(--blue);">
+      <div class="routine-time" style="color: var(--blue);">
+        <span class="lang-ru">~08:00 &middot; Утро</span>
+        <span class="lang-en">~8 AM &middot; Morning</span>
+      </div>
+      <h3 style="font-size: 18px;">
+        <span class="lang-ru">Утренний бриф</span>
+        <span class="lang-en">Morning brief</span>
+      </h3>
+      <p style="font-size: 14px; color: var(--text-dim); line-height: 1.6;">
+        <span class="lang-ru">Проверяет изменения в Open Brain. Напоминает про невыполненные обещания и забытые задачи. Фокус на сегодня.</span>
+        <span class="lang-en">Checks Open Brain updates. Reminds about unfulfilled promises and forgotten tasks. Focus for today.</span>
+      </p>
+    </div>
+
+    <div class="routine-card" style="border-left: 3px solid var(--accent2);">
+      <div class="routine-time" style="color: var(--accent2);">
+        <span class="lang-ru">~03:00 &middot; Ночь</span>
+        <span class="lang-en">~3 AM &middot; Night</span>
+      </div>
+      <h3 style="font-size: 18px;">
+        <span class="lang-ru">Уборка памяти</span>
+        <span class="lang-en">Memory cleanup</span>
+      </h3>
+      <p style="font-size: 14px; color: var(--text-dim); line-height: 1.6;">
+        <span class="lang-ru">Удаляет дубликаты. Связывает &laquo;висящие&raquo; мысли с проектами. Наводит порядок автоматически.</span>
+        <span class="lang-en">Removes duplicates. Links orphaned thoughts to projects. Tidies up automatically.</span>
+      </p>
+    </div>
+  </div>
+
+  <div style="max-width: 700px; margin: 32px auto 0; text-align: center;">
+    <p style="font-size: 18px; color: var(--text); line-height: 1.7; margin-bottom: 28px;">
+      <span class="lang-ru">Каждый день &mdash; автоматический цикл: <strong style="color: var(--orange);">собрать</strong> &rarr; <strong style="color: var(--blue);">напомнить</strong> &rarr; <strong style="color: var(--accent2);">навести порядок</strong>.</span>
+      <span class="lang-en">Every day &mdash; an automatic cycle: <strong style="color: var(--orange);">collect</strong> &rarr; <strong style="color: var(--blue);">remind</strong> &rarr; <strong style="color: var(--accent2);">organize</strong>.</span>
+    </p>
+
+    <div class="card" style="border-left: 3px solid var(--green); text-align: left;">
+      <h3 style="font-size: 17px;">
+        <span class="lang-ru">Пример бытовой рутины: WhatsApp-дайджест</span>
+        <span class="lang-en">Everyday routine example: WhatsApp digest</span>
+      </h3>
+      <p style="font-size: 14px; color: var(--text-dim); line-height: 1.6; margin-bottom: 12px;">
+        <span class="lang-ru">Живу в Израиле &mdash; все групповые чаты (школьный, домовой) на иврите. Подключил WhatsApp &mdash; вечерний дайджест автоматически выдаёт суть ивритских чатов на русском. Бытовая, но невероятно ценная вещь для любого релоканта.</span>
+        <span class="lang-en">I live in Israel &mdash; all group chats (school, building) are in Hebrew. Connected WhatsApp &mdash; the evening digest automatically summarizes Hebrew chats in Russian. Mundane but incredibly valuable for any expat.</span>
+      </p>
+      <div style="background: var(--surface2); border-radius: 8px; padding: 12px 16px; font-size: 13px; color: var(--text); line-height: 1.6;">
+        <span class="lang-ru"><strong>Школьный чат:</strong> экскурсия перенесена на среду, нужно 50₪ до завтра<br>
+        <strong>Домовой чат:</strong> лифт починят в четверг, парковка будет перекрыта</span>
+        <span class="lang-en"><strong>School chat:</strong> field trip moved to Wednesday, need 50₪ by tomorrow<br>
+        <strong>Building chat:</strong> elevator fixed Thursday, parking will be blocked</span>
+      </div>
+    </div>
+
+    <div class="inline-quote" style="border-left-color: var(--accent2); text-align: center; margin-top: 24px;">
+      <span class="lang-ru">&laquo;Через год он будет мыслить как я &mdash; только сильно быстрее&raquo;</span>
+      <span class="lang-en">"In a year it will think like me &mdash; just much, much faster"</span>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 8: Mindset shift -->
+<section class="slide" id="s8">
+  <div class="slide-number">08 / 14</div>
+  <h2>
+    <span class="lang-ru">Два сдвига сознания</span>
+    <span class="lang-en">Two mindset shifts</span>
+  </h2>
+
+  <div style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px;">
+    <div class="card" style="border-left: 3px solid var(--accent2);">
+      <h3 style="font-size: 22px; margin-bottom: 16px;">
+        <span class="lang-ru">&laquo;AI говорит ерунду? Проблема в контексте, а не в AI&raquo;</span>
+        <span class="lang-en">"AI talks nonsense? The problem is context, not the AI"</span>
+      </h3>
+      <div class="grid-2" style="gap: 20px;">
+        <div style="font-size: 15px;">
+          <div style="color: var(--pink); font-weight: 600; margin-bottom: 8px;">
+            <span class="lang-ru">Раньше</span>
+            <span class="lang-en">Before</span>
+          </div>
+          <p style="color: var(--text-dim); font-size: 15px;">
+            <span class="lang-ru">&laquo;AI тупой, он не понимает&raquo;</span>
+            <span class="lang-en">"AI is dumb, it doesn't understand"</span>
+          </p>
+        </div>
+        <div style="font-size: 15px;">
+          <div style="color: var(--green); font-weight: 600; margin-bottom: 8px;">
+            <span class="lang-ru">Сейчас</span>
+            <span class="lang-en">Now</span>
+          </div>
+          <p style="color: var(--text-dim); font-size: 15px;">
+            <span class="lang-ru">&laquo;Я загрузил плохой контекст. Чем больше контекста &mdash; тем умнее ответ&raquo;</span>
+            <span class="lang-en">"I loaded bad context. The more context &mdash; the smarter the answer"</span>
+          </p>
+        </div>
+      </div>
+      <p style="font-size: 15px; color: var(--text-dim); margin-top: 16px; line-height: 1.7;">
+        <span class="lang-ru">Перестаёшь соревноваться с AI &mdash; начинаешь им <strong style="color: var(--text);">управлять</strong>.</span>
+        <span class="lang-en">You stop competing with AI &mdash; and start <strong style="color: var(--text);">managing</strong> it.</span>
+      </p>
+    </div>
+
+    <div class="card" style="border-left: 3px solid var(--orange);">
+      <h3 style="font-size: 22px; margin-bottom: 16px;">
+        <span class="lang-ru">&laquo;Опыт + скорость AI = суперсила&raquo;</span>
+        <span class="lang-en">"Experience + AI speed = superpower"</span>
+      </h3>
+      <p style="font-size: 15px; color: var(--text-dim); line-height: 1.7; margin-bottom: 16px;">
+        <span class="lang-ru">С возрастом накапливается то, что нельзя загуглить: понимание, какие решения работают, а какие &mdash; нет. Чутьё на людей. Умение расставлять приоритеты. AI не заменяет этот опыт &mdash; он даёт ему скорость и масштаб. Опытный менеджер с AI делает за час то, на что раньше уходил день.</span>
+        <span class="lang-en">Over time you accumulate something you can't google: understanding which decisions work and which don't. Intuition about people. Ability to prioritize. AI doesn't replace that experience &mdash; it gives it speed and scale. An experienced manager with AI does in an hour what used to take a day.</span>
+      </p>
+      <div class="inline-quote" style="border-left-color: var(--orange);">
+        <span class="lang-ru">&laquo;Ваш личный помощник за 8000 рублей в месяц &mdash; и он делает на 95% так, как вы хотите. Такого человека ещё поискать&raquo;</span>
+        <span class="lang-en">"Your personal assistant for $80/month &mdash; and it does 95% of what you want. Try finding a human like that"</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 9: What it gives (jobs to be done, compact) -->
+<section class="slide" id="s9">
+  <div class="slide-number">09 / 14</div>
+  <h2>
+    <span class="lang-ru">Что это даёт <span class="dim">на практике</span></span>
+    <span class="lang-en">What it gives <span class="dim">in practice</span></span>
+  </h2>
+
+  <div class="grid-3" style="max-width: 960px; margin: 0 auto;">
     <div class="card">
       <h3>
         <span class="lang-ru">Никогда не забываешь</span>
@@ -581,8 +919,8 @@
         <span class="lang-en">Capture from anywhere</span>
       </h3>
       <p style="font-size: 15px; color: var(--text-dim);">
-        <span class="lang-ru">Telegram &mdash; пишешь боту, и мысль сохранена. Голосовое &mdash; транскрибируется и попадает в базу. Встреча в Granola &mdash; инсайты уходят автоматически.</span>
-        <span class="lang-en">Telegram &mdash; text the bot, thought saved. Voice note &mdash; transcribed and stored. Meeting in Granola &mdash; insights captured automatically.</span>
+        <span class="lang-ru">Telegram, голосовые, встречи в Granola, email &mdash; всё транскрибируется и попадает в базу с автоматической категоризацией.</span>
+        <span class="lang-en">Telegram, voice notes, Granola meetings, email &mdash; everything is transcribed and stored with automatic categorization.</span>
       </p>
     </div>
     <div class="card">
@@ -618,378 +956,9 @@
   </div>
 </section>
 
-<!-- SLIDE 6: Use cases for managers -->
-<section class="slide" id="s6">
-  <div class="slide-number">06 / 17</div>
-  <h2>
-    <span class="lang-ru">Как облегчает работу <span class="dim">для менеджеров и топов</span></span>
-    <span class="lang-en">How it streamlines work <span class="dim">for managers and executives</span></span>
-  </h2>
-
-  <div class="grid-2">
-    <div class="card" style="border-left: 3px solid var(--accent2);">
-      <h3>
-        <span class="lang-ru">Обход почты</span>
-        <span class="lang-en">Email processing</span>
-      </h3>
-      <p style="font-size: 15px; color: var(--text-dim); margin-bottom: 12px;">
-        <span class="lang-ru">Пересылаешь письмо в AI &mdash; он читает, извлекает суть, создаёт проект, разбивает на задачи. Не нужно перечитывать длинные треды &mdash; AI уже знает контекст и подготовит ответ в твоём стиле.</span>
-        <span class="lang-en">Forward an email to AI &mdash; it reads, extracts the essence, creates a project, breaks it into tasks. No need to reread long threads &mdash; AI already knows the context and drafts a reply in your style.</span>
-      </p>
-      <div class="tags">
-        <span class="tag highlight">
-          <span class="lang-ru">Email &rarr; задачи за 2 мин</span>
-          <span class="lang-en">Email &rarr; tasks in 2 min</span>
-        </span>
-        <span class="tag">
-          <span class="lang-ru">Драфт ответа</span>
-          <span class="lang-en">Draft reply</span>
-        </span>
-      </div>
-    </div>
-    <div class="card" style="border-left: 3px solid var(--green);">
-      <h3>
-        <span class="lang-ru">Анализ встреч</span>
-        <span class="lang-en">Meeting analysis</span>
-      </h3>
-      <p style="font-size: 15px; color: var(--text-dim); margin-bottom: 12px;">
-        <span class="lang-ru">Транскрипция встречи из Granola попадает в Open Brain. AI выделяет решения, задачи, ключевые инсайты. Через неделю спрашиваешь &laquo;что решили на встрече с X?&raquo; &mdash; получаешь точный ответ.</span>
-        <span class="lang-en">Meeting transcript from Granola goes into Open Brain. AI highlights decisions, tasks, key insights. A week later, ask "what did we decide at the meeting with X?" &mdash; get an exact answer.</span>
-      </p>
-      <div class="tags">
-        <span class="tag highlight">
-          <span class="lang-ru">Авто-инсайты</span>
-          <span class="lang-en">Auto-insights</span>
-        </span>
-        <span class="tag">
-          <span class="lang-ru">Решения и задачи</span>
-          <span class="lang-en">Decisions &amp; tasks</span>
-        </span>
-      </div>
-    </div>
-    <div class="card" style="border-left: 3px solid var(--orange);">
-      <h3>
-        <span class="lang-ru">Подготовка к встречам</span>
-        <span class="lang-en">Meeting prep</span>
-      </h3>
-      <p style="font-size: 15px; color: var(--text-dim); margin-bottom: 12px;">
-        <span class="lang-ru">&laquo;Подготовь меня к встрече с Дмитрием&raquo; &mdash; AI поднимает всю историю: предыдущие обсуждения, договорённости, открытые вопросы. За 30 секунд &mdash; полный бриф.</span>
-        <span class="lang-en">"Prepare me for a meeting with Dmitry" &mdash; AI pulls up the full history: past discussions, agreements, open questions. In 30 seconds &mdash; a complete brief.</span>
-      </p>
-      <div class="tags">
-        <span class="tag highlight">
-          <span class="lang-ru">Контекст за секунды</span>
-          <span class="lang-en">Context in seconds</span>
-        </span>
-        <span class="tag">
-          <span class="lang-ru">История общения</span>
-          <span class="lang-en">Communication history</span>
-        </span>
-      </div>
-    </div>
-    <div class="card" style="border-left: 3px solid var(--pink);">
-      <h3>
-        <span class="lang-ru">Делегирование и контроль</span>
-        <span class="lang-en">Delegation and oversight</span>
-      </h3>
-      <p style="font-size: 15px; color: var(--text-dim); margin-bottom: 12px;">
-        <span class="lang-ru">Все задачи с дедлайнами, привязаны к проектам и людям. &laquo;Что должен сделать Саша на этой неделе?&raquo;, &laquo;Какие задачи просрочены?&raquo; &mdash; AI отвечает, а не ты копаешься в Jira.</span>
-        <span class="lang-en">All tasks have deadlines, linked to projects and people. "What does Sasha need to do this week?", "Which tasks are overdue?" &mdash; AI answers instead of you digging through Jira.</span>
-      </p>
-      <div class="tags">
-        <span class="tag highlight">
-          <span class="lang-ru">Статус за секунду</span>
-          <span class="lang-en">Status in a second</span>
-        </span>
-        <span class="tag">
-          <span class="lang-ru">Без микроменеджмента</span>
-          <span class="lang-en">No micromanagement</span>
-        </span>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- SLIDE 7: Workflow transformation -->
-<section class="slide" id="s7">
-  <div class="slide-number">07 / 17</div>
-  <h2>
-    <span class="lang-ru">Как меняется воркфлоу</span>
-    <span class="lang-en">How workflow changes</span>
-  </h2>
-
-  <div class="grid-2" style="gap: 48px;">
-    <div class="card" style="background: rgba(253,121,168,0.05); border-color: rgba(253,121,168,0.3);">
-      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
-        <span style="font-size: 28px;">😩</span>
-        <h3 style="color: var(--pink); margin-bottom: 0;">
-          <span class="lang-ru">Раньше</span>
-          <span class="lang-en">Before</span>
-        </h3>
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 16px;">
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-          <div style="color: var(--pink); font-weight: 700; font-size: 18px; min-width: 24px;">1</div>
-          <div style="font-size: 15px;">
-            <span class="lang-ru">Пришла задача или письмо</span>
-            <span class="lang-en">A task or email arrives</span>
-          </div>
-        </div>
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-          <div style="color: var(--pink); font-weight: 700; font-size: 18px; min-width: 24px;">2</div>
-          <div style="font-size: 15px;">
-            <span class="lang-ru">Прокрастинирую, не знаю с чего начать</span>
-            <span class="lang-en">Procrastinate, don't know where to start</span>
-          </div>
-        </div>
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-          <div style="color: var(--pink); font-weight: 700; font-size: 18px; min-width: 24px;">3</div>
-          <div style="font-size: 15px;">
-            <span class="lang-ru">Долго думаю, что вообще с этим делать</span>
-            <span class="lang-en">Spend time thinking about what to even do</span>
-          </div>
-        </div>
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-          <div style="color: var(--pink); font-weight: 700; font-size: 18px; min-width: 24px;">4</div>
-          <div style="font-size: 15px;">
-            <span class="lang-ru">Начинаю &laquo;покусывать&raquo; по чуть-чуть</span>
-            <span class="lang-en">Start nibbling at it bit by bit</span>
-          </div>
-        </div>
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-          <div style="color: var(--pink); font-weight: 700; font-size: 18px; min-width: 24px;">5</div>
-          <div style="font-size: 15px; color: var(--text-dim);">
-            <span class="lang-ru">Через N дней &mdash; может, доделал. А может, забыл.</span>
-            <span class="lang-en">After N days &mdash; maybe done. Maybe forgotten.</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" style="background: rgba(0,184,148,0.05); border-color: rgba(0,184,148,0.3);">
-      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
-        <span style="font-size: 28px;">🚀</span>
-        <h3 style="color: var(--green); margin-bottom: 0;">
-          <span class="lang-ru">Сейчас</span>
-          <span class="lang-en">Now</span>
-        </h3>
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 16px;">
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-          <div style="color: var(--green); font-weight: 700; font-size: 18px; min-width: 24px;">1</div>
-          <div style="font-size: 15px;">
-            <span class="lang-ru">Пришла задача &mdash; сразу создаю проект в Open Brain</span>
-            <span class="lang-en">Task arrives &mdash; immediately create a project in Open Brain</span>
-          </div>
-        </div>
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-          <div style="color: var(--green); font-weight: 700; font-size: 18px; min-width: 24px;">2</div>
-          <div style="font-size: 15px;">
-            <span class="lang-ru">AI анализирует, разбивает на подзадачи, предлагает план со сроками</span>
-            <span class="lang-en">AI analyzes, breaks into subtasks, suggests a plan with deadlines</span>
-          </div>
-        </div>
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-          <div style="color: var(--green); font-weight: 700; font-size: 18px; min-width: 24px;">3</div>
-          <div style="font-size: 15px;">
-            <span class="lang-ru">Я корректирую: &laquo;вот это делаем, а вот это не нужно&raquo;</span>
-            <span class="lang-en">I adjust: "let's do this, skip that"</span>
-          </div>
-        </div>
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-          <div style="color: var(--green); font-weight: 700; font-size: 18px; min-width: 24px;">4</div>
-          <div style="font-size: 15px;">
-            <span class="lang-ru">Прошу AI идти по плану: напиши драфт письма, подготовь данные, собери информацию</span>
-            <span class="lang-en">Ask AI to follow the plan: draft the email, prepare data, gather info</span>
-          </div>
-        </div>
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-          <div style="color: var(--green); font-weight: 700; font-size: 18px; min-width: 24px;">5</div>
-          <div style="font-size: 15px; color: var(--green); font-weight: 600;">
-            <span class="lang-ru">Результат: не прокрастинирую, а управляю процессом</span>
-            <span class="lang-en">Result: no procrastination &mdash; I manage the process</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <p style="text-align: center; margin-top: 40px; font-size: 17px; color: var(--text-dim); max-width: 640px; margin-left: auto; margin-right: auto;">
-    <span class="lang-ru">Ключевое изменение &mdash; AI берёт на себя &laquo;холодный старт&raquo;.<br>
-    Ты больше не начинаешь с пустого листа, а сразу работаешь с готовым планом.</span>
-    <span class="lang-en">The key change &mdash; AI handles the "cold start."<br>
-    You no longer start from a blank page &mdash; you work with a ready-made plan.</span>
-  </p>
-</section>
-
-<!-- SLIDE 8: Live stats -->
-<section class="slide" id="s8">
-  <div class="slide-number">08 / 17</div>
-  <h2>
-    <span class="lang-ru">3 дня использования <span class="dim">live data</span></span>
-    <span class="lang-en">3 days of usage <span class="dim">live data</span></span>
-  </h2>
-
-  <div class="grid-4" style="margin-bottom: 40px;">
-    <div class="card accent-purple">
-      <div class="number">197</div>
-      <div class="label">
-        <span class="lang-ru">Записей</span>
-        <span class="lang-en">Entries</span>
-      </div>
-      <div class="desc">
-        <span class="lang-ru">Мысли, задачи, решения, идеи</span>
-        <span class="lang-en">Thoughts, tasks, decisions, ideas</span>
-      </div>
-    </div>
-    <div class="card accent-green">
-      <div class="number">35+</div>
-      <div class="label">
-        <span class="lang-ru">Контактов</span>
-        <span class="lang-en">Contacts</span>
-      </div>
-      <div class="desc">
-        <span class="lang-ru">Извлечены автоматически из контекста</span>
-        <span class="lang-en">Auto-extracted from context</span>
-      </div>
-    </div>
-    <div class="card accent-orange">
-      <div class="number">3</div>
-      <div class="label">
-        <span class="lang-ru">Проекта</span>
-        <span class="lang-en">Projects</span>
-      </div>
-      <div class="desc">
-        <span class="lang-ru">С задачами и дедлайнами</span>
-        <span class="lang-en">With tasks and deadlines</span>
-      </div>
-    </div>
-    <div class="card accent-blue">
-      <div class="number">10+</div>
-      <div class="label">
-        <span class="lang-ru">Топиков</span>
-        <span class="lang-en">Topics</span>
-      </div>
-      <div class="desc">
-        <span class="lang-ru">Автоматическая категоризация</span>
-        <span class="lang-en">Automatic categorization</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="grid-2">
-    <div>
-      <h3>
-        <span class="lang-ru">Типы записей</span>
-        <span class="lang-en">Entry types</span>
-      </h3>
-      <div class="tags">
-        <span class="tag highlight">
-          <span class="lang-ru">66 идей</span>
-          <span class="lang-en">66 ideas</span>
-        </span>
-        <span class="tag">
-          <span class="lang-ru">38 заметок</span>
-          <span class="lang-en">38 notes</span>
-        </span>
-        <span class="tag">
-          <span class="lang-ru">38 задач</span>
-          <span class="lang-en">38 tasks</span>
-        </span>
-        <span class="tag">
-          <span class="lang-ru">16 инсайтов</span>
-          <span class="lang-en">16 insights</span>
-        </span>
-        <span class="tag">
-          <span class="lang-ru">15 рефлексий</span>
-          <span class="lang-en">15 reflections</span>
-        </span>
-        <span class="tag">
-          <span class="lang-ru">10 событий</span>
-          <span class="lang-en">10 events</span>
-        </span>
-        <span class="tag">
-          <span class="lang-ru">4 решения</span>
-          <span class="lang-en">4 decisions</span>
-        </span>
-      </div>
-    </div>
-    <div>
-      <h3>
-        <span class="lang-ru">Источники</span>
-        <span class="lang-en">Sources</span>
-      </h3>
-      <div class="tags">
-        <span class="tag highlight">
-          <span class="lang-ru">AI-чаты (MCP)</span>
-          <span class="lang-en">AI chats (MCP)</span>
-        </span>
-        <span class="tag">
-          <span class="lang-ru">ChatGPT импорт</span>
-          <span class="lang-en">ChatGPT import</span>
-        </span>
-        <span class="tag">
-          <span class="lang-ru">Granola (встречи)</span>
-          <span class="lang-en">Granola (meetings)</span>
-        </span>
-        <span class="tag">Telegram</span>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- SLIDE 9: Real example -->
-<section class="slide" id="s9">
-  <div class="slide-number">09 / 17</div>
-  <h2>
-    <span class="lang-ru">Реальный пример <span class="dim">сегодня, за 20 минут</span></span>
-    <span class="lang-en">Real example <span class="dim">today, in 20 minutes</span></span>
-  </h2>
-
-  <div class="card" style="max-width: 800px; margin: 0 auto;">
-    <h3 style="margin-bottom: 20px;">
-      <span class="lang-ru">Новый проект &mdash; от письма до полного плана действий</span>
-      <span class="lang-en">New project &mdash; from email to a complete action plan</span>
-    </h3>
-    <div class="timeline">
-      <div class="timeline-item">
-        <div class="timeline-date">14:52</div>
-        <div class="timeline-content">
-          <span class="lang-ru">Внешний консультант прислал рабочий документ на email. Пересылаю в Cowork &mdash; &laquo;прочитай и начинаем&raquo;.</span>
-          <span class="lang-en">External consultant sent a working document via email. Forward to Cowork &mdash; "read it and let's start."</span>
-        </div>
-      </div>
-      <div class="timeline-item">
-        <div class="timeline-date">15:04</div>
-        <div class="timeline-content">
-          <span class="lang-ru">Claude прочитал email и вложение, извлёк все факты. Создан проект в Open Brain: контекст, стейкхолдеры, ключевые даты, финансовые параметры.</span>
-          <span class="lang-en">Claude read the email and attachment, extracted all facts. Project created in Open Brain: context, stakeholders, key dates, financial parameters.</span>
-        </div>
-      </div>
-      <div class="timeline-item">
-        <div class="timeline-date">15:10</div>
-        <div class="timeline-content">
-          <span class="lang-ru">Сгенерирован нумерованный запрос из 13 пунктов для коллег. 5 задач с дедлайнами + 6 справочных записей сохранены в Open Brain.</span>
-          <span class="lang-en">Generated a 13-point numbered request for colleagues. 5 tasks with deadlines + 6 reference entries saved to Open Brain.</span>
-        </div>
-      </div>
-      <div class="timeline-item">
-        <div class="timeline-date" style="color: var(--green);">
-          <span class="lang-ru">Результат</span>
-          <span class="lang-en">Result</span>
-        </div>
-        <div class="timeline-content">
-          <span class="lang-ru">Теперь из любого AI-клиента можно спросить: &laquo;Что нужно сделать по проекту?&raquo;, &laquo;Какие условия у консультанта?&raquo;, &laquo;Что запросить у коллег?&raquo; &mdash; и получить полный ответ.</span>
-          <span class="lang-en">Now from any AI client you can ask: "What needs to be done on the project?", "What are the consultant's terms?", "What to request from colleagues?" &mdash; and get a complete answer.</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- SLIDE 10: Real case — Dodo Pizza file processing -->
+<!-- SLIDE 10: Dodo Pizza case -->
 <section class="slide" id="s10">
-  <div class="slide-number">10 / 17</div>
+  <div class="slide-number">10 / 14</div>
   <h2>
     <span class="lang-ru">Кейс: файл &rarr; база знаний <span class="dim">50 слайдов &rarr; 11 инсайтов</span></span>
     <span class="lang-en">Case: file &rarr; knowledge base <span class="dim">50 slides &rarr; 11 insights</span></span>
@@ -1082,402 +1051,174 @@
   </div>
 </section>
 
-<!-- SLIDE 11: Widgets -->
+<!-- SLIDE 12: Live stats -->
 <section class="slide" id="s11">
-  <div class="slide-number">11 / 17</div>
+  <div class="slide-number">11 / 14</div>
   <h2>
-    <span class="lang-ru">Виджеты <span class="dim">захват и отображение</span></span>
-    <span class="lang-en">Widgets <span class="dim">capture and display</span></span>
+    <span class="lang-ru">Статистика <span class="dim">live data</span></span>
+    <span class="lang-en">Statistics <span class="dim">live data</span></span>
   </h2>
+
+  <div class="grid-4" style="margin-bottom: 40px;">
+    <div class="card accent-purple">
+      <div class="number">279</div>
+      <div class="label">
+        <span class="lang-ru">Записей</span>
+        <span class="lang-en">Entries</span>
+      </div>
+      <div class="desc">
+        <span class="lang-ru">Мысли, задачи, решения, идеи</span>
+        <span class="lang-en">Thoughts, tasks, decisions, ideas</span>
+      </div>
+    </div>
+    <div class="card accent-green">
+      <div class="number">90+</div>
+      <div class="label">
+        <span class="lang-ru">Контактов</span>
+        <span class="lang-en">Contacts</span>
+      </div>
+      <div class="desc">
+        <span class="lang-ru">Извлечены автоматически из контекста</span>
+        <span class="lang-en">Auto-extracted from context</span>
+      </div>
+    </div>
+    <div class="card accent-orange">
+      <div class="number">5</div>
+      <div class="label">
+        <span class="lang-ru">Проектов</span>
+        <span class="lang-en">Projects</span>
+      </div>
+      <div class="desc">
+        <span class="lang-ru">С задачами и дедлайнами</span>
+        <span class="lang-en">With tasks and deadlines</span>
+      </div>
+    </div>
+    <div class="card accent-blue">
+      <div class="number">10+</div>
+      <div class="label">
+        <span class="lang-ru">Топиков</span>
+        <span class="lang-en">Topics</span>
+      </div>
+      <div class="desc">
+        <span class="lang-ru">Автоматическая категоризация</span>
+        <span class="lang-en">Automatic categorization</span>
+      </div>
+    </div>
+  </div>
 
   <div class="grid-2">
-    <div class="card">
-      <h3 style="margin-bottom: 16px;">
-        <span class="lang-ru">Telegram-бот для захвата</span>
-        <span class="lang-en">Telegram bot for capture</span>
+    <div>
+      <h3>
+        <span class="lang-ru">Типы записей</span>
+        <span class="lang-en">Entry types</span>
       </h3>
-      <div style="background: var(--surface2); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-        <div style="font-size: 13px; color: var(--text-dim); margin-bottom: 12px;">Telegram &rarr; Open Brain</div>
-        <div class="lang-ru-flex" style="flex-direction: column; gap: 12px;">
-          <div style="background: var(--surface); border-radius: 8px; padding: 12px 16px; max-width: 80%; font-size: 14px;">
-            &laquo;Встреча с Максом &mdash; договорились запустить пилот в Беларуси к маю&raquo;
-          </div>
-          <div style="background: rgba(108,92,231,0.15); border-radius: 8px; padding: 12px 16px; max-width: 80%; align-self: flex-end; font-size: 14px; color: var(--accent2);">
-            Сохранено. Тип: decision. Тема: franchise. Люди: Макс.
-          </div>
-          <div style="background: var(--surface); border-radius: 8px; padding: 12px 16px; max-width: 80%; font-size: 14px;">
-            <span style="font-size: 12px; color: var(--text-dim);">Голосовое 0:42</span>
-          </div>
-          <div style="background: rgba(108,92,231,0.15); border-radius: 8px; padding: 12px 16px; max-width: 80%; align-self: flex-end; font-size: 14px; color: var(--accent2);">
-            Транскрибировано и сохранено. Тип: idea.
-          </div>
-        </div>
-        <div class="lang-en-flex" style="flex-direction: column; gap: 12px;">
-          <div style="background: var(--surface); border-radius: 8px; padding: 12px 16px; max-width: 80%; font-size: 14px;">
-            "Meeting with Max &mdash; agreed to launch pilot in Belarus by May"
-          </div>
-          <div style="background: rgba(108,92,231,0.15); border-radius: 8px; padding: 12px 16px; max-width: 80%; align-self: flex-end; font-size: 14px; color: var(--accent2);">
-            Saved. Type: decision. Topic: franchise. People: Max.
-          </div>
-          <div style="background: var(--surface); border-radius: 8px; padding: 12px 16px; max-width: 80%; font-size: 14px;">
-            <span style="font-size: 12px; color: var(--text-dim);">Voice note 0:42</span>
-          </div>
-          <div style="background: rgba(108,92,231,0.15); border-radius: 8px; padding: 12px 16px; max-width: 80%; align-self: flex-end; font-size: 14px; color: var(--accent2);">
-            Transcribed and saved. Type: idea.
-          </div>
-        </div>
+      <div class="tags">
+        <span class="tag highlight">
+          <span class="lang-ru">82 заметки</span>
+          <span class="lang-en">82 notes</span>
+        </span>
+        <span class="tag">
+          <span class="lang-ru">67 идей</span>
+          <span class="lang-en">67 ideas</span>
+        </span>
+        <span class="tag">
+          <span class="lang-ru">56 задач</span>
+          <span class="lang-en">56 tasks</span>
+        </span>
+        <span class="tag">
+          <span class="lang-ru">24 рефлексии</span>
+          <span class="lang-en">24 reflections</span>
+        </span>
+        <span class="tag">
+          <span class="lang-ru">19 инсайтов</span>
+          <span class="lang-en">19 insights</span>
+        </span>
+        <span class="tag">
+          <span class="lang-ru">16 событий</span>
+          <span class="lang-en">16 events</span>
+        </span>
+        <span class="tag">
+          <span class="lang-ru">4 решения</span>
+          <span class="lang-en">4 decisions</span>
+        </span>
       </div>
-      <p style="font-size: 14px; color: var(--text-dim);">
-        <span class="lang-ru">Текст, голосовые, фото &mdash; всё транскрибируется и попадает в базу с автоматической категоризацией.</span>
-        <span class="lang-en">Text, voice notes, photos &mdash; everything is transcribed and stored with automatic categorization.</span>
-      </p>
     </div>
-    <div class="card">
-      <h3 style="margin-bottom: 16px;">
-        <span class="lang-ru">Chrome-виджет &laquo;Фокус дня&raquo;</span>
-        <span class="lang-en">Chrome widget "Focus of the day"</span>
+    <div>
+      <h3>
+        <span class="lang-ru">Источники</span>
+        <span class="lang-en">Sources</span>
       </h3>
-      <div style="background: var(--surface2); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-        <div style="font-size: 13px; color: var(--text-dim); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px;">
-          <span class="lang-ru">Фокус на сегодня</span>
-          <span class="lang-en">Today's focus</span>
-        </div>
-        <div class="lang-ru-flex" style="flex-direction: column; gap: 12px; margin-top: 16px;">
-          <div style="display: flex; align-items: flex-start; gap: 12px;">
-            <div style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; margin-top: 2px;"></div>
-            <div>
-              <div style="font-size: 14px;">Отправить запрос из 13 пунктов в HR</div>
-              <div style="font-size: 12px; color: var(--accent2); margin-top: 4px; background: rgba(108,92,231,0.1); display: inline-block; padding: 2px 8px; border-radius: 4px;">Новый проект</div>
-            </div>
-          </div>
-          <div style="display: flex; align-items: flex-start; gap: 12px;">
-            <div style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; margin-top: 2px;"></div>
-            <div style="font-size: 14px;">Подготовить описание функций для консультанта</div>
-          </div>
-          <div style="display: flex; align-items: flex-start; gap: 12px;">
-            <div style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; margin-top: 2px;"></div>
-            <div style="font-size: 14px;">Получить план действий от Лены</div>
-          </div>
-        </div>
-        <div class="lang-en-flex" style="flex-direction: column; gap: 12px; margin-top: 16px;">
-          <div style="display: flex; align-items: flex-start; gap: 12px;">
-            <div style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; margin-top: 2px;"></div>
-            <div>
-              <div style="font-size: 14px;">Send 13-point request to HR</div>
-              <div style="font-size: 12px; color: var(--accent2); margin-top: 4px; background: rgba(108,92,231,0.1); display: inline-block; padding: 2px 8px; border-radius: 4px;">New project</div>
-            </div>
-          </div>
-          <div style="display: flex; align-items: flex-start; gap: 12px;">
-            <div style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; margin-top: 2px;"></div>
-            <div style="font-size: 14px;">Prepare function descriptions for consultant</div>
-          </div>
-          <div style="display: flex; align-items: flex-start; gap: 12px;">
-            <div style="width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; margin-top: 2px;"></div>
-            <div style="font-size: 14px;">Get action plan from Lena</div>
-          </div>
-        </div>
-        <div style="font-size: 12px; color: var(--text-dim); margin-top: 16px; text-align: center;">
-          <span class="lang-ru">+ ещё 31 задач</span>
-          <span class="lang-en">+ 31 more tasks</span>
-        </div>
+      <div class="tags">
+        <span class="tag highlight">
+          <span class="lang-ru">AI-чаты (MCP)</span>
+          <span class="lang-en">AI chats (MCP)</span>
+        </span>
+        <span class="tag">
+          <span class="lang-ru">ChatGPT импорт</span>
+          <span class="lang-en">ChatGPT import</span>
+        </span>
+        <span class="tag">
+          <span class="lang-ru">Granola (встречи)</span>
+          <span class="lang-en">Granola (meetings)</span>
+        </span>
+        <span class="tag">Telegram</span>
+        <span class="tag">WhatsApp</span>
       </div>
-      <p style="font-size: 14px; color: var(--text-dim);">
-        <span class="lang-ru">Открывается в новой вкладке Chrome. Показывает задачи на сегодня, привязанные к проектам. Обновляется из Open Brain в реальном времени.</span>
-        <span class="lang-en">Opens in a new Chrome tab. Shows today's tasks linked to projects. Updates from Open Brain in real time.</span>
-      </p>
-    </div>
-  </div>
-
-  <p style="text-align: center; margin-top: 48px; font-size: 18px; color: var(--text-dim); max-width: 640px; margin-left: auto; margin-right: auto;">
-    <span class="lang-ru">Open Brain &mdash; это не приложение. Это <span style="color: var(--accent2); font-weight: 600;">слой памяти</span>,
-    который делает любой AI персональным.<br>
-    <span style="margin-top: 8px; display: inline-block;">И всё это &mdash; за 3 дня, с нуля, без опыта в программировании.</span></span>
-    <span class="lang-en">Open Brain is not an app. It's a <span style="color: var(--accent2); font-weight: 600;">memory layer</span>
-    that makes any AI personal.<br>
-    <span style="margin-top: 8px; display: inline-block;">All of this &mdash; built in 3 days, from scratch, with zero programming experience.</span></span>
-  </p>
-</section>
-
-<!-- SLIDE 11: Skills intro -->
-<section class="slide title-slide" id="s12" style="background: radial-gradient(ellipse at 50% 50%, #1a1030 0%, var(--bg) 70%);">
-  <div class="slide-number">12 / 17</div>
-  <h1 style="font-size: 56px;">
-    <span class="lang-ru">Скиллы</span>
-    <span class="lang-en">Skills</span>
-  </h1>
-  <p class="subtitle">
-    <span class="lang-ru">Open Brain теперь умеет не только помнить, но и действовать</span>
-    <span class="lang-en">Open Brain can now not just remember, but act</span>
-  </p>
-  <div style="max-width: 640px; margin: 32px auto 0; text-align: left;">
-    <div class="card" style="border-color: var(--accent); text-align: center;">
-      <p style="font-size: 17px; line-height: 1.7;">
-        <span class="lang-ru"><strong style="color: var(--accent2);">Скилл</strong> &mdash; это готовый рецепт для задачи.<br>
-        Говоришь <em>&laquo;подготовь бриф к встрече&raquo;</em> &mdash; система знает, что делать:<br>
-        найти заметки, посмотреть участников, собрать задачи, сформировать документ.</span>
-        <span class="lang-en"><strong style="color: var(--accent2);">A skill</strong> is a ready-made recipe for a task.<br>
-        Say <em>"prepare a meeting brief"</em> &mdash; the system knows what to do:<br>
-        find notes, check participants, gather tasks, compile the document.</span>
-      </p>
-      <p style="font-size: 15px; color: var(--text-dim); margin-top: 16px;">
-        <span class="lang-ru">Не нужно каждый раз объяснять AI, как действовать &mdash; скилл уже содержит пошаговую инструкцию.</span>
-        <span class="lang-en">No need to explain to AI how to act every time &mdash; the skill already contains step-by-step instructions.</span>
-      </p>
     </div>
   </div>
 </section>
 
-<!-- SLIDE 12: Skills in action — real examples -->
-<section class="slide" id="s13">
-  <div class="slide-number">13 / 17</div>
+<!-- SLIDE 12: Tamagotchi -->
+<section class="slide" id="s12">
+  <div class="slide-number">12 / 14</div>
   <h2>
-    <span class="lang-ru">Скиллы в деле <span class="dim">реальные сценарии</span></span>
-    <span class="lang-en">Skills in action <span class="dim">real scenarios</span></span>
+    <span class="lang-ru">Персональный тамагочи</span>
+    <span class="lang-en">Your personal tamagotchi</span>
   </h2>
 
-  <div class="grid-2">
-    <div class="card" style="border-left: 3px solid var(--accent2);">
-      <h3 style="margin-bottom: 16px;">
-        <span class="lang-ru">Подготовка к встрече</span>
-        <span class="lang-en">Meeting prep</span>
-      </h3>
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <div style="font-size: 15px; color: var(--text-dim);">
-          <span class="lang-ru">Ты: <em>&laquo;Подготовь меня к завтрашнему созвону с Дмитрием&raquo;</em></span>
-          <span class="lang-en">You: <em>"Prepare me for tomorrow's call with Dmitry"</em></span>
-        </div>
-        <div style="font-size: 14px; background: var(--surface2); border-radius: 8px; padding: 12px 16px;">
-          <span class="lang-ru">Скилл <span class="tag highlight" style="font-size: 12px;">meeting-brief</span> автоматически:<br>
-          &bull; Находит все прошлые обсуждения с Дмитрием<br>
-          &bull; Поднимает открытые задачи по общим проектам<br>
-          &bull; Собирает бриф: цель, темы, контекст</span>
-          <span class="lang-en">Skill <span class="tag highlight" style="font-size: 12px;">meeting-brief</span> automatically:<br>
-          &bull; Finds all past discussions with Dmitry<br>
-          &bull; Pulls open tasks on shared projects<br>
-          &bull; Compiles brief: goals, topics, context</span>
-        </div>
-        <div style="font-size: 14px; color: var(--green);">
-          <span class="lang-ru">Результат: готовый бриф за 30 секунд вместо 20 минут</span>
-          <span class="lang-en">Result: a complete brief in 30 seconds instead of 20 minutes</span>
-        </div>
-      </div>
+  <div style="max-width: 720px; margin: 0 auto;">
+    <div class="card" style="border-color: var(--accent); text-align: center; margin-bottom: 32px;">
+      <p style="font-size: 18px; line-height: 1.8; color: var(--text);">
+        <span class="lang-ru">Open Brain &mdash; это не продукт, который устанавливаешь и забываешь.<br>
+        Это как <strong style="color: var(--accent2);">персональный тамагочи</strong> &mdash; каждый день ты его немного допиливаешь, подкручиваешь, учишь новому. Добавил интеграцию с WhatsApp. Научил делать вечерние дайджесты. Подключил к календарю. Настроил утренний бриф.</span>
+        <span class="lang-en">Open Brain is not a product you install and forget.<br>
+        It's like a <strong style="color: var(--accent2);">personal tamagotchi</strong> &mdash; every day you tweak it a little, tune it, teach it something new. Added WhatsApp integration. Taught it to make evening digests. Connected to calendar. Set up morning briefs.</span>
+      </p>
     </div>
-    <div class="card" style="border-left: 3px solid var(--green);">
-      <h3 style="margin-bottom: 16px;">
-        <span class="lang-ru">Фоллоу-ап после встречи</span>
-        <span class="lang-en">Post-meeting follow-up</span>
-      </h3>
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <div style="font-size: 15px; color: var(--text-dim);">
-          <span class="lang-ru">Ты: <em>&laquo;Напиши итоги встречи с продуктовой командой&raquo;</em></span>
-          <span class="lang-en">You: <em>"Write up the meeting notes from the product team call"</em></span>
-        </div>
-        <div style="font-size: 14px; background: var(--surface2); border-radius: 8px; padding: 12px 16px;">
-          <span class="lang-ru">Скилл <span class="tag highlight" style="font-size: 12px;">follow-up</span> автоматически:<br>
-          &bull; Достаёт заметки из Granola по этой встрече<br>
-          &bull; Извлекает договорённости, ответственных, дедлайны<br>
-          &bull; Пишет письмо <strong>в твоём стиле</strong></span>
-          <span class="lang-en">Skill <span class="tag highlight" style="font-size: 12px;">follow-up</span> automatically:<br>
-          &bull; Pulls notes from Granola for this meeting<br>
-          &bull; Extracts agreements, owners, deadlines<br>
-          &bull; Writes an email <strong>in your style</strong></span>
-        </div>
-        <div style="font-size: 14px; color: var(--green);">
-          <span class="lang-ru">Результат: готовый фоллоу-ап, осталось только отправить</span>
-          <span class="lang-en">Result: ready follow-up, just hit send</span>
-        </div>
-      </div>
-    </div>
-    <div class="card" style="border-left: 3px solid var(--orange);">
-      <h3 style="margin-bottom: 16px;">
-        <span class="lang-ru">Делегирование задачи</span>
-        <span class="lang-en">Task delegation</span>
-      </h3>
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <div style="font-size: 15px; color: var(--text-dim);">
-          <span class="lang-ru">Ты: <em>&laquo;Поручи Лене подготовить данные по Беларуси&raquo;</em></span>
-          <span class="lang-en">You: <em>"Assign Lena to prepare the Belarus data"</em></span>
-        </div>
-        <div style="font-size: 14px; background: var(--surface2); border-radius: 8px; padding: 12px 16px;">
-          <span class="lang-ru">Скилл <span class="tag highlight" style="font-size: 12px;">delegate-task</span> автоматически:<br>
-          &bull; Находит контекст проекта и роль Лены<br>
-          &bull; Формулирует задачу: что, зачем, к какому сроку<br>
-          &bull; Адаптирует тон под отношения с человеком</span>
-          <span class="lang-en">Skill <span class="tag highlight" style="font-size: 12px;">delegate-task</span> automatically:<br>
-          &bull; Finds project context and Lena's role<br>
-          &bull; Formulates the task: what, why, by when<br>
-          &bull; Adapts tone to the relationship</span>
-        </div>
-        <div style="font-size: 14px; color: var(--green);">
-          <span class="lang-ru">Результат: чёткая формулировка, а не &laquo;ну ты поняла&raquo;</span>
-          <span class="lang-en">Result: clear formulation, not "you know what I mean"</span>
-        </div>
-      </div>
-    </div>
-    <div class="card" style="border-left: 3px solid var(--pink);">
-      <h3 style="margin-bottom: 16px;">
-        <span class="lang-ru">Сводка для руководства</span>
-        <span class="lang-en">Executive summary</span>
-      </h3>
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <div style="font-size: 15px; color: var(--text-dim);">
-          <span class="lang-ru">Ты: <em>&laquo;Подготовь сводку за месяц для директора&raquo;</em></span>
-          <span class="lang-en">You: <em>"Prepare a monthly summary for the director"</em></span>
-        </div>
-        <div style="font-size: 14px; background: var(--surface2); border-radius: 8px; padding: 12px 16px;">
-          <span class="lang-ru">Скилл <span class="tag highlight" style="font-size: 12px;">weekly-report</span> автоматически:<br>
-          &bull; Собирает все завершённые задачи и решения<br>
-          &bull; Группирует по проектам, выделяет достижения<br>
-          &bull; Формирует executive summary с ключевыми цифрами</span>
-          <span class="lang-en">Skill <span class="tag highlight" style="font-size: 12px;">weekly-report</span> automatically:<br>
-          &bull; Gathers all completed tasks and decisions<br>
-          &bull; Groups by projects, highlights achievements<br>
-          &bull; Compiles executive summary with key metrics</span>
-        </div>
-        <div style="font-size: 14px; color: var(--green);">
-          <span class="lang-ru">Результат: отчёт, на который раньше уходил час</span>
-          <span class="lang-en">Result: a report that used to take an hour</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
 
-<!-- SLIDE 13: How to get skills -->
-<section class="slide" id="s14">
-  <div class="slide-number">14 / 17</div>
-  <h2>
-    <span class="lang-ru">Откуда брать скиллы</span>
-    <span class="lang-en">Where to get skills</span>
-  </h2>
-
-  <div style="max-width: 800px; margin: 0 auto;">
-    <div style="display: flex; flex-direction: column; gap: 24px; margin-bottom: 40px;">
+    <div class="grid-2" style="gap: 20px; margin-bottom: 32px;">
       <div class="card" style="border-left: 3px solid var(--green);">
-        <div style="display: flex; align-items: flex-start; gap: 16px;">
-          <div style="font-size: 36px; font-weight: 800; color: var(--green); line-height: 1;">1</div>
-          <div>
-            <h3 style="margin-bottom: 8px;">
-              <span class="lang-ru">Создать самому</span>
-              <span class="lang-en">Create your own</span>
-            </h3>
-            <p style="font-size: 15px; color: var(--text-dim); margin-bottom: 12px;">
-              <span class="lang-ru">Описываешь простым языком: что скилл делает, по каким словам его вызывать, какие шаги выполнять. Всё &mdash; скилл готов к работе.</span>
-              <span class="lang-en">Describe in plain language: what the skill does, what trigger words to use, what steps to follow. Done &mdash; the skill is ready to work.</span>
-            </p>
-            <div style="background: var(--surface2); border-radius: 8px; padding: 12px 16px; font-size: 14px; color: var(--text-dim);">
-              <span class="lang-ru">Пример: &laquo;Создай скилл &laquo;onboarding&raquo; &mdash; когда приходит новый сотрудник, собери всю информацию о его роли, подготовь план первой недели и список людей для знакомства&raquo;</span>
-              <span class="lang-en">Example: "Create a skill 'onboarding' &mdash; when a new employee arrives, gather all info about their role, prepare a first-week plan and a list of people to meet"</span>
-            </div>
-          </div>
-        </div>
+        <h3 style="font-size: 17px;">
+          <span class="lang-ru">Чем больше кормишь</span>
+          <span class="lang-en">The more you feed it</span>
+        </h3>
+        <p style="font-size: 14px; color: var(--text-dim); line-height: 1.6;">
+          <span class="lang-ru">Больше контекста &rarr; точнее ответы. Больше задач &rarr; лучше приоритизация. Больше встреч &rarr; глубже понимание людей и проектов.</span>
+          <span class="lang-en">More context &rarr; more accurate answers. More tasks &rarr; better prioritization. More meetings &rarr; deeper understanding of people and projects.</span>
+        </p>
       </div>
       <div class="card" style="border-left: 3px solid var(--accent2);">
-        <div style="display: flex; align-items: flex-start; gap: 16px;">
-          <div style="font-size: 36px; font-weight: 800; color: var(--accent2); line-height: 1;">2</div>
-          <div>
-            <h3 style="margin-bottom: 8px;">
-              <span class="lang-ru">Импортировать из интернета</span>
-              <span class="lang-en">Import from the internet</span>
-            </h3>
-            <p style="font-size: 15px; color: var(--text-dim); margin-bottom: 12px;">
-              <span class="lang-ru">Нашёл хорошее описание процесса или роли? Одна команда &mdash; и Open Brain автоматически превращает его в скилл: парсит, адаптирует под твои данные, сохраняет.</span>
-              <span class="lang-en">Found a good description of a process or role? One command &mdash; and Open Brain automatically turns it into a skill: parses, adapts to your data, saves.</span>
-            </p>
-            <div style="background: var(--surface2); border-radius: 8px; padding: 12px 16px; font-size: 14px; color: var(--text-dim);">
-              <span class="lang-ru">Пример: нашёл на GitHub описание &laquo;Product Manager Agent&raquo; &mdash; импортировал, и теперь Open Brain умеет помогать с приоритизацией фич и дорожной картой.</span>
-              <span class="lang-en">Example: found a "Product Manager Agent" description on GitHub &mdash; imported it, and now Open Brain can help with feature prioritization and roadmapping.</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="card" style="border-left: 3px solid var(--orange);">
-        <div style="display: flex; align-items: flex-start; gap: 16px;">
-          <div style="font-size: 36px; font-weight: 800; color: var(--orange); line-height: 1;">3</div>
-          <div>
-            <h3 style="margin-bottom: 8px;">
-              <span class="lang-ru">Скилл появляется сам</span>
-              <span class="lang-en">Skills appear automatically</span>
-            </h3>
-            <p style="font-size: 15px; color: var(--text-dim); margin-bottom: 12px;">
-              <span class="lang-ru">Когда создаёшь задачу, Open Brain автоматически подбирает лучший скилл. Задача &laquo;написать письмо Алексею по итогам ревью&raquo; сразу получает бейдж подходящего скилла.</span>
-              <span class="lang-en">When you create a task, Open Brain automatically picks the best skill. A task like "write an email to Alexey with review results" instantly gets a matching skill badge.</span>
-            </p>
-            <div style="background: var(--surface2); border-radius: 8px; padding: 12px 16px; font-size: 14px; color: var(--text-dim);">
-              <span class="lang-ru">Это работает как навигатор: ты говоришь куда ехать, а система сама строит маршрут.</span>
-              <span class="lang-en">It works like GPS: you say where to go, and the system builds the route.</span>
-            </div>
-          </div>
-        </div>
+        <h3 style="font-size: 17px;">
+          <span class="lang-ru">Чем больше допиливаешь</span>
+          <span class="lang-en">The more you customize</span>
+        </h3>
+        <p style="font-size: 14px; color: var(--text-dim); line-height: 1.6;">
+          <span class="lang-ru">Новые рутины, интеграции, автоматизации. Вчера не было WhatsApp &mdash; сегодня есть. Завтра добавлю Slack. Система растёт вместе с тобой.</span>
+          <span class="lang-en">New routines, integrations, automations. Yesterday no WhatsApp &mdash; today it's there. Tomorrow I'll add Slack. The system grows with you.</span>
+        </p>
       </div>
     </div>
 
-    <p style="text-align: center; font-size: 16px; color: var(--text-dim);">
-      <span class="lang-ru">Сейчас в системе <strong style="color: var(--accent2);">9 скиллов</strong>: подготовка к встречам, фоллоу-апы, отчёты, делегирование, фиксация решений, черновики писем, сводки для руководства и другие. Библиотека растёт.</span>
-      <span class="lang-en">Currently <strong style="color: var(--accent2);">9 skills</strong> in the system: meeting prep, follow-ups, reports, delegation, decision logging, email drafts, executive summaries and more. The library keeps growing.</span>
+    <p style="text-align: center; font-size: 17px; color: var(--text-dim); line-height: 1.7;">
+      <span class="lang-ru">Это не про технологию. Это про <strong style="color: var(--text);">привычку</strong> &mdash; каждый день делать свой AI чуть умнее.</span>
+      <span class="lang-en">It's not about technology. It's about a <strong style="color: var(--text);">habit</strong> &mdash; making your AI a little smarter every day.</span>
     </p>
   </div>
 </section>
 
-<!-- SLIDE 14: What's next -->
-<section class="slide" id="s15">
-  <div class="slide-number">15 / 17</div>
-  <h2>
-    <span class="lang-ru">Что дальше</span>
-    <span class="lang-en">What's next</span>
-  </h2>
-
-  <div class="grid-2" style="max-width: 800px; margin: 0 auto;">
-    <div class="card" style="border-left: 3px solid var(--accent2);">
-      <h3>
-        <span class="lang-ru">Цепочки скиллов</span>
-        <span class="lang-en">Skill chains</span>
-      </h3>
-      <p style="font-size: 15px; color: var(--text-dim);">
-        <span class="lang-ru">&laquo;Проанализируй встречи за неделю и подготовь презентацию&raquo; &mdash; один запрос запускает несколько скиллов последовательно.</span>
-        <span class="lang-en">"Analyze this week's meetings and prepare a presentation" &mdash; one request triggers multiple skills in sequence.</span>
-      </p>
-    </div>
-    <div class="card" style="border-left: 3px solid var(--green);">
-      <h3>Cursor IDE</h3>
-      <p style="font-size: 15px; color: var(--text-dim);">
-        <span class="lang-ru">Open Brain подключён к Cursor &mdash; AI-редактору кода. Пишешь код, а он видит твои задачи, проекты и контекст.</span>
-        <span class="lang-en">Open Brain connects to Cursor &mdash; an AI code editor. Write code while it sees your tasks, projects, and context.</span>
-      </p>
-    </div>
-    <div class="card" style="border-left: 3px solid var(--orange);">
-      <h3>
-        <span class="lang-ru">Скиллы учатся</span>
-        <span class="lang-en">Skills learn</span>
-      </h3>
-      <p style="font-size: 15px; color: var(--text-dim);">
-        <span class="lang-ru">Чем больше используешь скилл, тем лучше он адаптируется под тебя: стиль, предпочтения, частые паттерны.</span>
-        <span class="lang-en">The more you use a skill, the better it adapts to you: style, preferences, frequent patterns.</span>
-      </p>
-    </div>
-    <div class="card" style="border-left: 3px solid var(--pink);">
-      <h3>
-        <span class="lang-ru">Персональная ОС</span>
-        <span class="lang-en">Personal OS</span>
-      </h3>
-      <p style="font-size: 15px; color: var(--text-dim);">
-        <span class="lang-ru">Open Brain = память + скиллы + интеграции. Операционная система для работы с AI, где ты &mdash; менеджер, а не исполнитель.</span>
-        <span class="lang-en">Open Brain = memory + skills + integrations. An operating system for working with AI, where you manage &mdash; not execute.</span>
-      </p>
-    </div>
-  </div>
-
-  <p style="text-align: center; margin-top: 48px; font-size: 18px; color: var(--text-dim); max-width: 640px; margin-left: auto; margin-right: auto;">
-    <span class="lang-ru">Open Brain &mdash; это <span style="color: var(--accent2); font-weight: 600;">память + навыки</span>.<br>
-    AI не просто помнит &mdash; он знает, <em>как действовать</em>.</span>
-    <span class="lang-en">Open Brain is <span style="color: var(--accent2); font-weight: 600;">memory + skills</span>.<br>
-    AI doesn't just remember &mdash; it knows <em>how to act</em>.</span>
-  </p>
-</section>
-
-<!-- SLIDE 15: Risks & responsibility -->
-<section class="slide" id="s16">
-  <div class="slide-number">16 / 17</div>
+<!-- SLIDE 14: Risks & responsibility -->
+<section class="slide" id="s13">
+  <div class="slide-number">13 / 14</div>
   <h2>
     <span class="lang-ru">Риски <span class="dim">о чём важно помнить</span></span>
     <span class="lang-en">Risks <span class="dim">what to keep in mind</span></span>
@@ -1527,9 +1268,9 @@
   </div>
 </section>
 
-<!-- SLIDE 16: Try it yourself -->
-<section class="slide title-slide" id="s17" style="background: radial-gradient(ellipse at 50% 50%, #0d1a10 0%, var(--bg) 70%);">
-  <div class="slide-number">17 / 17</div>
+<!-- SLIDE 15: Try it yourself -->
+<section class="slide title-slide" id="s14" style="background: radial-gradient(ellipse at 50% 50%, #0d1a10 0%, var(--bg) 70%);">
+  <div class="slide-number">14 / 14</div>
   <h1 style="font-size: 48px;">
     <span class="lang-ru">Хочешь такой же?</span>
     <span class="lang-en">Want your own?</span>
@@ -1584,7 +1325,7 @@
 </section>
 
 <nav class="nav">
-  <a href="#s1">1</a><a href="#s2">2</a><a href="#s3">3</a><a href="#s4">4</a><a href="#s5">5</a><a href="#s6">6</a><a href="#s7">7</a><a href="#s8">8</a><a href="#s9">9</a><a href="#s10">10</a><a href="#s11">11</a><a href="#s12">12</a><a href="#s13">13</a><a href="#s14">14</a><a href="#s15">15</a><a href="#s16">16</a><a href="#s17">17</a>
+  <a href="#s1">1</a><a href="#s2">2</a><a href="#s3">3</a><a href="#s4">4</a><a href="#s5">5</a><a href="#s6">6</a><a href="#s7">7</a><a href="#s8">8</a><a href="#s9">9</a><a href="#s10">10</a><a href="#s11">11</a><a href="#s12">12</a><a href="#s13">13</a><a href="#s14">14</a>
 </nav>
 
 <script>
