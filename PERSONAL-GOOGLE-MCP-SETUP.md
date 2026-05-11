@@ -109,7 +109,7 @@ Auth через `MCP_ACCESS_KEY` — тот же, что у Open Brain, можн
 
 В Supabase Dashboard → **Database** → **Extensions** → включить `pg_cron` (если ещё не включён).
 
-Затем в SQL Editor выполнить миграцию из [supabase/migrations/20260511_personal_google_mcp_audit.sql](../../supabase/migrations/20260511_personal_google_mcp_audit.sql). Она создаст:
+Затем в SQL Editor выполнить миграцию `supabase/migrations/20260511_personal_google_mcp_audit.sql` (есть в коде сервера). Она создаст:
 - Схему `personal_google_mcp`
 - Таблицу `tool_calls` (метаданные вызовов, без контента)
 - Индексы для быстрых запросов
@@ -165,10 +165,35 @@ order by ts desc limit 10;
 - **Гранулярный scope:** `gmail.modify` вместо `gmail.full` — нельзя permanent delete.
 - **Аудит без контента:** в логи пишутся метаданные (тул, статус, длительность, ID ресурса), но НЕ тело писем, имена файлов или search queries.
 
-## Файлы и ссылки
+## Где код
 
-- Код сервера: [supabase/functions/personal-google-mcp/](../../supabase/functions/personal-google-mcp/)
-- Миграция БД: [supabase/migrations/20260511_personal_google_mcp_audit.sql](../../supabase/migrations/20260511_personal_google_mcp_audit.sql)
-- Bootstrap-скрипт (альтернатива OAuth Playground): [scripts/personal_google_auth.ts](../../scripts/personal_google_auth.ts)
+Сам MCP-сервер — Supabase Edge Function на Deno. Структура:
+
+```
+supabase/
+├── functions/
+│   └── personal-google-mcp/
+│       ├── index.ts          # MCP entry: JSON-RPC 2.0, auth, dispatch
+│       ├── auth.ts           # OAuth token refresh + in-memory cache
+│       ├── gmail.ts          # Gmail REST API wrapper
+│       ├── drive.ts          # Drive REST API wrapper
+│       ├── confirmation.ts   # Stateless HMAC confirmation tokens
+│       ├── audit.ts          # Fire-and-forget логирование
+│       └── tools/
+│           ├── gmail_tools.ts
+│           └── drive_tools.ts
+├── migrations/
+│   └── 20260511_personal_google_mcp_audit.sql
+└── scripts/
+    └── personal_google_auth.ts   # альтернатива OAuth Playground через CLI
+```
+
+Архитектура повторяет [Open Brain MCP](https://github.com/izomba-lang/open-brain-overview) — тот же Supabase-проект, тот же `MCP_ACCESS_KEY`, один деплой-пайплайн.
+
+Если нужен код для своей реализации — стучись напрямую.
+
+## Ссылки
+
 - Gmail REST API docs: https://developers.google.com/gmail/api/reference/rest
 - Drive REST API docs: https://developers.google.com/drive/api/reference/rest/v3
+- MCP spec: https://spec.modelcontextprotocol.io
