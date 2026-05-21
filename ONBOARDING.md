@@ -56,11 +56,31 @@ OpenRouter API (embeddings + LLM)
 
 Можно создавать свои через `manage_skill` или импортировать из GitHub через `import_skill`.
 
+## Brain-wiki (ночная компиляция)
+
+Опциональный слой поверх базы мыслей. Каждую ночь Wiki Compiler:
+
+1. Находит сущности (страны, люди, компании, топики), по которым появились новые мысли
+2. Собирает все мысли по сущности, отправляет Claude Sonnet 4
+3. Claude генерирует markdown-страницу: TL;DR, открытые вопросы, ключевые решения, противоречия
+4. Страница коммитится в приватный GitHub-репо `brain-wiki`
+
+Утром открываешь Obsidian (с Obsidian Git plugin) — свежая wiki с кросс-ссылками и Graph View:
+- `countries/turkey.md` — всё по конкретному рынку
+- `people/ivanov.md` — история взаимодействия с контактом
+- `topics/tax-planning.md` — тематическая сводка
+- `_contradictions.md` — где данные конфликтуют между собой
+
+MCP-инструменты для wiki: `compile_wiki`, `manage_wiki_entity`, `manage_artifact`
+
+Стоимость: ~$0.15 за страницу, ~$3 за полный прогон 20 сущностей, ~$0.50/ночь в инкрементальном режиме.
+
 ## MCP-инструменты
 
-search_thoughts, list_thoughts, thought_stats, capture_thought, update_thought, delete_thought, manage_person, list_people, manage_project, list_projects, route_task, list_skills, manage_skill, import_skill, get_style_profile
+search_thoughts, list_thoughts, thought_stats, capture_thought, update_thought, delete_thought, manage_person, list_people, manage_project, list_projects, route_task, list_skills, manage_skill, import_skill, get_style_profile, compile_wiki, manage_wiki_entity, manage_artifact
 
 ## Полезные команды после настройки
 
 - Через Telegram: просто пиши текст (сохранится как мысль), начни с `?` для вопроса
 - Через AI: "Что я знаю про X?", "Подготовь бриф к встрече", "Напиши фоллоуап"
+- Wiki: "Добавь Казахстан в wiki", "Прикрепи финмодель к странице Turkey"
