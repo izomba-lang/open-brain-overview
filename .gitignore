@@ -1,2 +1,6 @@
 .DS_Store
 .claude/worktrees/
+
+downloads/
+src/supabase/.temp/
+*.mp3
