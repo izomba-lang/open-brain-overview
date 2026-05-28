@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { TOPIC_RULES, lintTopic, autocorrectTopic } from "../_shared/topic_prompt.ts";
 
 // Initialize Supabase client
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -46,14 +47,23 @@ async function extractMetadata(text: string) {
           content: `Extract metadata from this text. Return ONLY valid JSON:
 {
   "type": "idea|task|reflection|note|question|event|decision|insight",
-  "topic": "brief topic (max 50 chars)",
+  "topic": "namespace/subtopic[-DD-MM]",
   "people": ["names mentioned"],
   "sentiment": "positive|neutral|negative",
   "area": "work|personal|health|finance|learning|social"
 }
 
+Rules for "topic":
+${TOPIC_RULES}
+
+Rules for "type":
+- note: financial notifications, card transactions, receipts, bank alerts, expense reports — ALWAYS "note", even if a follow-up action is implied
+- task: only explicit assignments, to-dos, "need to do X", "don't forget Y" — the text must contain a clear call to action
+- event: meetings, trips, travel records (factual)
+- All other types: use based on content meaning
+
 Rules for "area":
-- work: anything related to job, projects, colleagues, meetings
+- work: anything related to job, projects, colleagues, meetings, Dodo Brands
 - personal: home, family, personal goals, hobbies
 - health: exercise, sleep, diet, medical
 - finance: money, budget, investments, expenses
@@ -70,11 +80,30 @@ Text: ${text}`,
   if (!res.ok) throw new Error(`Metadata extraction failed: ${await res.text()}`);
   const data = await res.json();
 
+  let parsed: { type?: string; topic?: string; people?: string[]; sentiment?: string; area?: string };
   try {
-    return JSON.parse(data.choices[0].message.content);
+    parsed = JSON.parse(data.choices[0].message.content);
   } catch {
-    return { type: "note", topic: "general", people: [], sentiment: "neutral" };
+    parsed = { type: "note", topic: "", people: [], sentiment: "neutral" };
   }
+  const warning = lintTopic(parsed.topic);
+  if (warning) {
+    const fixed = autocorrectTopic(parsed.topic, parsed.area);
+    console.warn(`[topic][autocorrect] "${parsed.topic}" → "${fixed}" (${warning}) — content="${text.slice(0, 80)}"`);
+    parsed.topic = fixed;
+  }
+  return parsed;
+}
+
+// Filter corporate card transaction alerts (Alaan, etc.)
+function isCardTransactionAlert(text: string): boolean {
+  const lower = text.toLowerCase();
+  // Direct card service keywords
+  if (lower.includes("alaan") || lower.includes("расходы по карте") || lower.includes("card alert")) return true;
+  // Amount + currency pattern near merchant name (e.g. "Novotel 1091.07 PLN")
+  const cardPattern = /\d+[.,]\d{2}\s*(pln|usd|ils|eur|aed|gbp|czk|huf|chf|sek|nok|dkk|try)/i;
+  if (cardPattern.test(text) && /\d{4}/.test(text)) return true; // has amount+currency and a 4-digit card suffix
+  return false;
 }
 
 // Main handler
@@ -144,6 +173,15 @@ Deno.serve(async (req: Request) => {
     // Must have text
     const text = event.text?.trim();
     if (!text) {
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Filter out corporate card transaction alerts
+    if (isCardTransactionAlert(text)) {
+      console.log("Filtered card transaction alert, skipping");
       return new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { "Content-Type": "application/json" },

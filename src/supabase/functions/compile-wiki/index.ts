@@ -815,131 +815,6 @@ async function regenerateIndex(): Promise<void> {
   await commitToGitHub("_index.md", lines.join("\n"), "Compile: update index");
 }
 
-// ─── Projects pages (deterministic, from projects table) ───
-
-function slugifyProject(text: string): string {
-  return text
-    .trim()
-    .toLowerCase()
-    .replace(/ё/g, "е")
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9а-я\-]/g, "")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-// Safe single-line YAML double-quoted scalar
-function yamlScalar(s: string): string {
-  return JSON.stringify(String(s).replace(/\r?\n/g, " ").trim());
-}
-
-async function regenerateProjects(): Promise<number> {
-  const { data: projects, error: projErr } = await supabase
-    .from("projects")
-    .select("id, name, description, status, area, deadline, metadata, updated_at")
-    .in("status", ["active", "paused"])
-    .order("area", { ascending: true });
-
-  if (projErr) throw new Error(`regenerateProjects query: ${projErr.message}`);
-  if (!projects || projects.length === 0) return 0;
-
-  let count = 0;
-  for (const p of projects) {
-    const meta = (p.metadata || {}) as Record<string, any>;
-    const slug = slugifyProject(p.name) || p.id.slice(0, 8);
-    const filePath = `projects/${slug}.md`;
-
-    const deadline = p.deadline ? String(p.deadline).slice(0, 10) : "";
-    const updated = p.updated_at ? String(p.updated_at).slice(0, 10) : "";
-    const nextAction = typeof meta.next_action_text === "string" ? meta.next_action_text : "";
-    const tags = Array.isArray(meta.tags) ? meta.tags : [];
-    const stakeholders = Array.isArray(meta.stakeholders) ? meta.stakeholders : [];
-
-    const fm: string[] = ["---", "type: project"];
-    if (p.area) fm.push(`area: ${p.area}`);
-    fm.push(`status: ${p.status}`);
-    if (deadline) fm.push(`deadline: ${deadline}`);
-    if (nextAction) fm.push(`next_action: ${yamlScalar(nextAction)}`);
-    if (updated) fm.push(`updated: ${updated}`);
-    if (tags.length) fm.push(`tags: [${tags.map((t: unknown) => yamlScalar(String(t))).join(", ")}]`);
-    fm.push("---");
-
-    const body: string[] = [`# ${p.name}`, ""];
-    if (nextAction) body.push(`**Следующий шаг:** ${nextAction}`, "");
-    if (deadline) body.push(`**Дедлайн:** ${deadline}`, "");
-    if (p.description) {
-      const desc = String(p.description);
-      body.push(desc.length > 1200 ? desc.slice(0, 1200) + "…" : desc, "");
-    }
-    if (stakeholders.length) body.push(`**Участники:** ${stakeholders.join(", ")}`, "");
-    body.push("", "> Автогенерируется из таблицы projects (Open Brain). Источник правды — БД.");
-
-    const content = fm.join("\n") + "\n\n" + body.join("\n");
-
-    // Skip if unchanged — avoid noise commits
-    const existing = await getFileContent(filePath);
-    if (existing === content) continue;
-
-    await commitToGitHub(filePath, content, `Compile: project ${p.name}`);
-    count++;
-  }
-
-  return count;
-}
-
-// ─── Morning briefing (_briefing.md, narrative via Claude) ───
-
-const BRIEFING_SYSTEM_PROMPT = `Ты — ассистент Ильи Зомбы (Head of International Markets, Dodo Brands).
-Составь короткий утренний брифинг по активным проектам — на чём сфокусироваться сегодня.
-
-Правила:
-- Русский, деловой тон. Без воды, без хвалебных и hedging-фраз.
-- 4–7 пунктов маркированным списком. Каждый: проект, что горит / следующий шаг, дедлайн если есть.
-- Просроченные дедлайны (раньше сегодняшней даты) помечай ⚠️ и ставь выше.
-- Сортируй по важности и срочности, НЕ по алфавиту.
-- Не выдумывай факты — только из переданных данных. Если по проекту данных мало — упомяни кратко.
-- Формат — markdown, маркированный список. БЕЗ заголовка (его добавит система). Не оборачивай в \`\`\` блоки.`;
-
-async function regenerateBriefing(force = false): Promise<boolean> {
-  const today = new Date().toISOString().slice(0, 10);
-
-  const existing = await getFileContent("_briefing.md");
-  if (!force && existing && existing.includes(`<!-- date: ${today} -->`)) {
-    return false; // already generated today
-  }
-
-  const { data: projects } = await supabase
-    .from("projects")
-    .select("name, area, status, deadline, metadata, description")
-    .eq("status", "active")
-    .order("area", { ascending: true });
-
-  if (!projects || projects.length === 0) return false;
-
-  const lines = projects.map((p: any) => {
-    const meta = (p.metadata || {}) as Record<string, any>;
-    const dl = p.deadline ? String(p.deadline).slice(0, 10) : "нет";
-    const na = typeof meta.next_action_text === "string" ? meta.next_action_text : "—";
-    const desc = p.description ? String(p.description).slice(0, 300) : "";
-    return `- [${p.area}] ${p.name} | дедлайн: ${dl} | след. шаг: ${na}\n  ${desc}`;
-  });
-
-  const userMessage = `Сегодня: ${today}\n\nАктивные проекты:\n${lines.join("\n")}`;
-
-  const result = await callClaude(BRIEFING_SYSTEM_PROMPT, userMessage);
-
-  const content = [
-    "# ☀️ Утренний брифинг",
-    `> ${today} · автогенерация из Open Brain`,
-    `<!-- date: ${today} -->`,
-    "",
-    result.text.trim(),
-  ].join("\n");
-
-  await commitToGitHub("_briefing.md", content, `Compile: briefing ${today}`);
-  return true;
-}
-
 // ─── Main compile logic ───
 
 async function compileEntity(
@@ -1044,8 +919,6 @@ async function compileWiki(opts: {
   entity_filter?: string;
   dry_run?: boolean;
   pick_one?: boolean;
-  projects_only?: boolean;
-  briefing_only?: boolean;
 }): Promise<{
   status: string;
   entities_touched: number;
@@ -1056,36 +929,6 @@ async function compileWiki(opts: {
   remaining?: number;
   errors: Array<{ entity: string; error: string }>;
 }> {
-  // projects_only: cheap deterministic pass, no run row, no entity compilation, no Claude cost
-  if (opts.projects_only) {
-    const n = await regenerateProjects();
-    return {
-      status: "success",
-      entities_touched: n,
-      thoughts_processed: 0,
-      tokens_in: 0,
-      tokens_out: 0,
-      cost_usd: 0,
-      remaining: 0,
-      errors: [],
-    };
-  }
-
-  // briefing_only: regenerate the morning briefing (forced), no entity compilation
-  if (opts.briefing_only) {
-    const ok = await regenerateBriefing(true);
-    return {
-      status: "success",
-      entities_touched: ok ? 1 : 0,
-      thoughts_processed: 0,
-      tokens_in: 0,
-      tokens_out: 0,
-      cost_usd: 0,
-      remaining: 0,
-      errors: [],
-    };
-  }
-
   const mode = opts.dry_run
     ? "dry-run"
     : opts.entity_filter
@@ -1110,15 +953,6 @@ async function compileWiki(opts: {
     }
 
     if (entities.length === 0) {
-      // Still refresh projects + briefing on quiet nights (incremental/full runs only)
-      if (!opts.entity_filter) {
-        try {
-          await regenerateProjects();
-          await regenerateBriefing();
-        } catch (e) {
-          console.error("Error regenerating projects/briefing:", e);
-        }
-      }
       await finishRun(run, "success");
       return {
         status: "success",
@@ -1169,8 +1003,6 @@ async function compileWiki(opts: {
       try {
         await regenerateIndex();
         await regenerateContradictionsPage(run);
-        await regenerateProjects();
-        await regenerateBriefing();
       } catch (e) {
         console.error("Error regenerating meta pages:", e);
       }
@@ -1227,8 +1059,6 @@ Deno.serve(async (req: Request) => {
       entity_filter: body.entity_filter || undefined,
       dry_run: body.dry_run === true,
       pick_one: body.pick_one === true,
-      projects_only: body.projects_only === true,
-      briefing_only: body.briefing_only === true,
     });
 
     return new Response(JSON.stringify(result, null, 2), {
