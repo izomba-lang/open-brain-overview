@@ -236,7 +236,7 @@ alter table public.skills enable row level security;
 | **Telegram** | Твой User ID | [@userinfobot](https://t.me/userinfobot) — чтобы бот работал только для тебя |
 | **Groq** | API Key | [console.groq.com](https://console.groq.com) — для транскрипции голосовых |
 
-Придумай свой **MCP_ACCESS_KEY** — любая строка, которая будет паролем к API (например: `my-secret-brain-key-2024`).
+Придумай свой **MCP_ACCESS_KEY** — любая длинная случайная строка, которая будет паролем к API (например, сгенерируй через `openssl rand -hex 24`).
 
 ## Шаг 4. Установи Supabase CLI
 
@@ -293,7 +293,7 @@ supabase link --project-ref <твой-project-ref>
 ```bash
 supabase secrets set \
   OPENROUTER_API_KEY="sk-or-..." \
-  MCP_ACCESS_KEY="my-secret-brain-key-2024" \
+  MCP_ACCESS_KEY="<твой_сгенерированный_ключ>" \
   TELEGRAM_BOT_TOKEN="123456:ABC-DEF..." \
   TELEGRAM_ALLOWED_USER_ID="123456789" \
   GROQ_API_KEY="gsk_..."
