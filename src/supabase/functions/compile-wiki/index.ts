@@ -1,18 +1,18 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { USER_NAME, USER_TITLE, USER_EMPLOYER } from "../_shared/persona_config.ts";
+import { callLLM, SYNTH_MODEL, TASK_MODEL, estimateCost, MODEL_PRICES } from "../_shared/llm.ts";
+import { startJobRun, finishJobRun } from "../_shared/alert.ts";
+import { matchesWholeWord } from "../_shared/text_match.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
 const GITHUB_TOKEN = Deno.env.get("GITHUB_TOKEN") || "";
 const GITHUB_REPO = Deno.env.get("GITHUB_REPO") || "";
 const MCP_ACCESS_KEY = Deno.env.get("MCP_ACCESS_KEY") || "";
 
-const SONNET_MODEL = "claude-sonnet-4-20250514";
 const MAX_CONCURRENCY = 1;
-const SONNET_INPUT_PRICE = 3;    // $/M tokens
-const SONNET_OUTPUT_PRICE = 15;  // $/M tokens
 
 // ─── Types ───
 
@@ -27,6 +27,8 @@ interface WikiEntity {
   last_sha: string | null;
   thoughts_count: number;
   status: string;
+  error_count: number;
+  next_retry_at: string | null;
 }
 
 interface CompileRun {
@@ -79,32 +81,51 @@ async function commitToGitHub(
   content: string,
   message: string
 ): Promise<string> {
-  const existingSha = await getFileSha(filePath);
-  const body: Record<string, unknown> = {
-    message,
-    content: btoa(unescape(encodeURIComponent(content))),
-    committer: { name: "Wiki Compiler", email: "bot@dodo-wiki" },
-  };
-  if (existingSha) body.sha = existingSha;
+  const encoded = btoa(unescape(encodeURIComponent(content)));
+  // SHA конфликт (409) случается, когда Илья правит страницу в Obsidian между
+  // нашим GET и PUT. Перечитываем актуальный SHA и повторяем — до 3 попыток.
+  let existingSha = await getFileSha(filePath);
+  let lastErr = "";
 
-  const resp = await fetch(
-    `https://api.github.com/repos/${GITHUB_REPO}/contents/${filePath}`,
-    {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${GITHUB_TOKEN}`,
-        Accept: "application/vnd.github.v3+json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const body: Record<string, unknown> = {
+      message,
+      content: encoded,
+      committer: { name: "Wiki Compiler", email: "bot@brain-wiki" },
+    };
+    if (existingSha) body.sha = existingSha;
+
+    const resp = await fetch(
+      `https://api.github.com/repos/${GITHUB_REPO}/contents/${filePath}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          Accept: "application/vnd.github.v3+json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (resp.ok) {
+      const data = await resp.json();
+      return data.content?.sha || "";
     }
-  );
-  if (!resp.ok) {
+
     const errText = await resp.text();
-    throw new Error(`GitHub PUT ${filePath}: ${resp.status} — ${errText}`);
+    lastErr = `${resp.status} — ${errText}`;
+
+    // 409 = SHA устарел; перечитываем и пробуем ещё раз. Прочие коды — фатальны.
+    if (resp.status !== 409 || attempt === 3) {
+      throw new Error(`GitHub PUT ${filePath}: ${lastErr}`);
+    }
+    console.warn(`GitHub PUT ${filePath}: 409 conflict, retry ${attempt}/3`);
+    await new Promise((r) => setTimeout(r, 1500));
+    existingSha = await getFileSha(filePath);
   }
-  const data = await resp.json();
-  return data.content?.sha || "";
+
+  throw new Error(`GitHub PUT ${filePath}: ${lastErr}`);
 }
 
 async function getFileContent(filePath: string): Promise<string | null> {
@@ -118,56 +139,26 @@ async function getFileContent(filePath: string): Promise<string | null> {
   return decodeURIComponent(escape(atob(data.content.replace(/\n/g, ""))));
 }
 
-// ─── Anthropic API ───
+// ─── LLM caller (delegates to shared module) ───
 
-async function callClaude(
+async function callCompileLLM(
   systemPrompt: string,
   userMessage: string,
-  maxRetries = 5
-): Promise<{ text: string; input_tokens: number; output_tokens: number }> {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const resp = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: SONNET_MODEL,
-        max_tokens: 8192,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userMessage }],
-      }),
-    });
-
-    if (resp.status === 429) {
-      const retryAfter = parseInt(resp.headers.get("retry-after") || "0", 10);
-      const delay = Math.max(retryAfter * 1000, (2 ** attempt) * 15_000);
-      console.log(`Rate limited, waiting ${Math.round(delay/1000)}s (attempt ${attempt + 1}/${maxRetries + 1})`);
-      await resp.text();
-      await new Promise(r => setTimeout(r, delay));
-      continue;
-    }
-
-    if (!resp.ok) {
-      const errText = await resp.text();
-      throw new Error(`Anthropic API: ${resp.status} — ${errText}`);
-    }
-    const data = await resp.json();
-    const text = data.content?.[0]?.text || "";
-    return {
-      text,
-      input_tokens: data.usage?.input_tokens || 0,
-      output_tokens: data.usage?.output_tokens || 0,
-    };
-  }
-  throw new Error("Anthropic API: max retries exceeded on 429");
+  model?: string,
+  maxTokens = 8192,
+): Promise<{ text: string; input_tokens: number; output_tokens: number; model: string }> {
+  return callLLM({
+    model: model || SYNTH_MODEL,
+    system: systemPrompt,
+    user: userMessage,
+    maxTokens,
+    maxRetries: 5,
+  });
 }
 
 // ─── Compiler system prompt ───
 
-const COMPILER_SYSTEM_PROMPT = `Ты — Wiki Compiler для Open Brain Ильи Зомбы, Head of International Markets в Dodo Brands.
+const COMPILER_SYSTEM_PROMPT = `Ты — Wiki Compiler для Open Brain ${USER_NAME}, ${USER_TITLE} в ${USER_EMPLOYER}.
 
 Твоя задача — поддерживать markdown-страницы wiki, которые описывают
 сущности (страны, людей, компании, топики) на основе мыслей, заметок и решений,
@@ -186,7 +177,7 @@ const COMPILER_SYSTEM_PROMPT = `Ты — Wiki Compiler для Open Brain Иль�
    (партнёр обещал X, потом сказал Y; HQ считает A, оперативка B; в марте было одно,
    в апреле другое), они должны быть выделены в секции «⚠️ Противоречия» с обеими
    позициями и датами. НЕ пытайся примирить, НЕ выбирай «правильную» — это сигнал
-   для Ильи, не помеха.
+   для пользователя, не помеха.
 
 4. PROVENANCE. Каждое нетривиальное утверждение — со ссылкой на источник в формате:
    (источник: <thought-type>, <date>, <thought-id-короткий-8-символов>). Это позволяет
@@ -245,7 +236,7 @@ const COMPILER_SYSTEM_PROMPT = `Ты — Wiki Compiler для Open Brain Иль�
 
 // ─── Delta compiler system prompt ───
 
-const DELTA_SYSTEM_PROMPT = `Ты — Wiki Compiler (delta mode) для Open Brain Ильи Зомбы.
+const DELTA_SYSTEM_PROMPT = `Ты — Wiki Compiler (delta mode) для Open Brain ${USER_NAME}.
 
 Тебе даны:
 1. Текущая markdown-страница wiki-сущности (ПОЛНАЯ)
@@ -395,7 +386,8 @@ async function loadEntityContext(
       if (data) {
         const seen = new Set(allThoughts.map(t => t.id));
         for (const t of data) {
-          if (!seen.has(t.id)) {
+          // ilike — грубый DB-префильтр; matchesWholeWord отсекает подстрочные ложняки.
+          if (!seen.has(t.id) && matchesWholeWord(t.content, term)) {
             seen.add(t.id);
             allThoughts.push(t);
           }
@@ -426,7 +418,8 @@ async function loadEntityContext(
       if (data) {
         const seen = new Set(allThoughts.map(t => t.id));
         for (const t of data) {
-          if (!seen.has(t.id)) {
+          // ilike — грубый DB-префильтр; matchesWholeWord отсекает подстрочные ложняки.
+          if (!seen.has(t.id) && matchesWholeWord(t.content, term)) {
             seen.add(t.id);
             allThoughts.push(t);
           }
@@ -564,11 +557,17 @@ function buildCompilerPrompt(
 // ─── Find touched entities ───
 
 async function getTouchedEntities(force: boolean): Promise<WikiEntity[]> {
+  // Backoff: сущности с активным окном ретрая (next_retry_at в будущем) пропускаем.
+  // Целевой ретрай конкретной сущности — через entity_filter (минует getTouchedEntities).
+  const nowIso = new Date().toISOString();
+  const retryReady = `next_retry_at.is.null,next_retry_at.lte.${nowIso}`;
+
   if (force) {
     const { data, error } = await supabase
       .from("wiki_entities")
       .select("*")
-      .in("status", ["pending", "active", "stale", "error"]);
+      .in("status", ["pending", "active", "stale", "error"])
+      .or(retryReady);
     if (error) throw new Error(`getTouchedEntities: ${error.message}`);
     return data || [];
   }
@@ -578,7 +577,8 @@ async function getTouchedEntities(force: boolean): Promise<WikiEntity[]> {
   const { data: entities, error } = await supabase
     .from("wiki_entities")
     .select("*")
-    .in("status", ["pending", "active", "stale", "error"]);
+    .in("status", ["pending", "active", "stale", "error"])
+    .or(retryReady);
 
   if (error) throw new Error(`getTouchedEntities: ${error.message}`);
   if (!entities || entities.length === 0) return [];
@@ -652,11 +652,11 @@ async function getTouchedEntities(force: boolean): Promise<WikiEntity[]> {
       }
     } else {
       const key = `${entity.entity_type}:${entity.canonical}`;
-      const searchTerms = [entity.canonical.toLowerCase(), ...(aliasMap.get(key) || [])];
-      const contentLower = relevantThoughts.map(t => t.content.toLowerCase());
+      // matchesWholeWord регистронезависим — терминам не нужен .toLowerCase().
+      const searchTerms = [entity.canonical, ...(aliasMap.get(key) || [])];
 
-      hasNew = searchTerms.some(term =>
-        contentLower.some(c => c.includes(term))
+      hasNew = relevantThoughts.some(t =>
+        searchTerms.some(term => matchesWholeWord(t.content, term))
       );
     }
 
@@ -689,9 +689,11 @@ async function startRun(mode: string): Promise<CompileRun> {
 async function finishRun(
   run: CompileRun,
   status: string,
-  errorMessage?: string
+  errorMessage?: string,
+  model?: string,
 ): Promise<void> {
-  const cost = (run.tokens_in * SONNET_INPUT_PRICE + run.tokens_out * SONNET_OUTPUT_PRICE) / 1_000_000;
+  const prices = MODEL_PRICES[model || SYNTH_MODEL] || MODEL_PRICES[SYNTH_MODEL];
+  const cost = (run.tokens_in * prices.input + run.tokens_out * prices.output) / 1_000_000;
   await supabase
     .from("wiki_compile_runs")
     .update({
@@ -720,7 +722,7 @@ async function mapWithConcurrency<T, R>(
 
   for (const item of items) {
     const p = fn(item).then((r) => { results.push(r); });
-    const e = p.then(() => executing.delete(e));
+    const e: Promise<void> = p.then(() => { executing.delete(e); });
     executing.add(e);
     if (executing.size >= concurrency) {
       await Promise.race(executing);
@@ -730,13 +732,47 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
+// ─── Page-structure helpers (quality checks + contradictions cache) ───
+
+// Body of the "## ⚠️ Противоречия" section (without its header), or "" when the
+// page has none / a trivially short one. Shared by the contradictions-page
+// regen and the per-entity cache write in compileEntity.
+function extractContradictionsSection(page: string): string {
+  const m = page.match(/## ⚠️ Противоречия[\s\S]*?(?=\n## |$)/);
+  if (m && m[0].trim().split("\n").length > 2) {
+    return m[0].replace("## ⚠️ Противоречия", "").trim();
+  }
+  return "";
+}
+
+// Level-2 headings present in a page (text only), for delta regression checks.
+function pageHeadings(md: string): string[] {
+  return (md.match(/^##\s+.+$/gm) || []).map((h) => h.replace(/^##\s+/, "").trim());
+}
+
+// A delta recompile edits the existing page in place; if the model dropped
+// headings or collapsed the page to a fraction of its prior size, it likely
+// mangled it. Returns a reason string when the delta output looks regressed
+// (caller should fall back to a full recompile), else null.
+function deltaRegression(before: string, after: string): string | null {
+  const lost = pageHeadings(before).filter((h) => !pageHeadings(after).includes(h));
+  if (lost.length > 0) return `lost ${lost.length} heading(s): ${lost.slice(0, 3).join(", ")}`;
+  const a = after.trim().length, b = before.trim().length;
+  if (b > 0 && a < b * 0.5) return `length ${a} < 50% of prior ${b}`;
+  return null;
+}
+
 // ─── Contradictions page ───
 
 async function regenerateContradictionsPage(run: CompileRun): Promise<void> {
-  // Collect all entities with contradictions from their compiled pages
+  // Pull each entity's contradictions section from the DB cache (populated by
+  // compileEntity). Cold rows (contradictions_md IS NULL) are backfilled with a
+  // one-time GitHub GET, so steady-state runs make ZERO GitHub GETs here — the
+  // nightly pick_one compile fires this every ~10 min, and the old per-entity
+  // GET loop was the dominant GitHub-call cost.
   const { data: entities } = await supabase
     .from("wiki_entities")
-    .select("canonical, entity_type, file_path, slug")
+    .select("id, canonical, entity_type, file_path, slug, contradictions_md")
     .eq("status", "active");
 
   if (!entities || entities.length === 0) return;
@@ -750,13 +786,15 @@ async function regenerateContradictionsPage(run: CompileRun): Promise<void> {
   ];
 
   for (const e of entities) {
-    const page = await getFileContent(e.file_path);
-    if (!page) continue;
-    const contradictionMatch = page.match(/## ⚠️ Противоречия[\s\S]*?(?=\n## |$)/);
-    if (contradictionMatch && contradictionMatch[0].trim().split("\n").length > 2) {
+    let section = e.contradictions_md as string | null;
+    if (section === null || section === undefined) {
+      const page = await getFileContent(e.file_path);
+      section = page ? extractContradictionsSection(page) : "";
+      await supabase.from("wiki_entities").update({ contradictions_md: section }).eq("id", e.id);
+    }
+    if (section && section.trim()) {
       lines.push(`## [[${e.slug}]] (${e.canonical})`);
-      const content = contradictionMatch[0].replace("## ⚠️ Противоречия", "").trim();
-      lines.push(content);
+      lines.push(section.trim());
       lines.push("");
     }
   }
@@ -879,7 +917,22 @@ async function compileEntity(
     return;
   }
 
-  const result = await callClaude(systemPrompt, prompt);
+  let result = await callCompileLLM(systemPrompt, prompt);
+
+  // Quality gate: a delta build rewrites the existing page from a small diff; if
+  // it dropped headings or shrank the page drastically, the model mangled it.
+  // Recompile in full mode (from all thoughts) and use that instead — precision
+  // over speed, a mangled page is worse than an extra LLM call.
+  if (isDelta && existingPage) {
+    const regression = deltaRegression(existingPage, result.text);
+    if (regression) {
+      console.warn(`[quality] delta regressed for ${entity.canonical} (${regression}) — full recompile`);
+      context = await loadEntityContext(entity, false);
+      const fullPrompt = buildCompilerPrompt(entity, context, existingPage, false);
+      result = await callCompileLLM(COMPILER_SYSTEM_PROMPT, fullPrompt);
+      isDelta = false;
+    }
+  }
 
   // For delta, also count total thoughts (existing page's count + new)
   const totalThoughts = isDelta
@@ -901,6 +954,9 @@ async function compileEntity(
       thoughts_count: totalThoughts,
       status: "active",
       last_error: null,
+      error_count: 0,
+      next_retry_at: null,
+      contradictions_md: extractContradictionsSection(result.text),
     })
     .eq("id", entity.id);
 
@@ -984,9 +1040,19 @@ async function compileWiki(opts: {
           console.error(`Error compiling ${entity.canonical}: ${msg}`);
           run.error_log.push({ entity: entity.canonical, error: msg });
           if (!opts.dry_run) {
+            // Backoff: 2^n * 10 минут, потолок 6 часов. Так error-сущность
+            // (напр. транзиентный 529 от Anthropic) не ретраится каждые 10 минут.
+            const errorCount = (entity.error_count ?? 0) + 1;
+            const backoffMin = Math.min(Math.pow(2, errorCount) * 10, 6 * 60);
+            const nextRetryAt = new Date(Date.now() + backoffMin * 60_000).toISOString();
             await supabase
               .from("wiki_entities")
-              .update({ status: "error", last_error: msg })
+              .update({
+                status: "error",
+                last_error: msg,
+                error_count: errorCount,
+                next_retry_at: nextRetryAt,
+              })
               .eq("id", entity.id);
           }
         }
@@ -1008,9 +1074,9 @@ async function compileWiki(opts: {
       }
     }
 
-    await finishRun(run, finalStatus);
+    await finishRun(run, finalStatus, undefined, SYNTH_MODEL);
 
-    const cost = (run.tokens_in * SONNET_INPUT_PRICE + run.tokens_out * SONNET_OUTPUT_PRICE) / 1_000_000;
+    const cost = estimateCost(SYNTH_MODEL, run.tokens_in, run.tokens_out);
 
     return {
       status: finalStatus,
@@ -1027,6 +1093,117 @@ async function compileWiki(opts: {
     await finishRun(run, "failed", msg);
     throw e;
   }
+}
+
+// ─── Lint mode ───
+
+const LINT_SYSTEM_PROMPT = `Ты — Wiki Linter для Open Brain. Анализируешь wiki-страницы и находишь проблемы.
+
+Задачи:
+1. ПРОТИВОРЕЧИЯ — факты, которые конфликтуют между страницами или внутри одной страницы.
+2. СЛЕПЫЕ ЗОНЫ — имена людей, компании или темы, часто упоминаемые в thoughts, но без wiki-страницы.
+3. УСТАРЕВШИЕ ДАННЫЕ — факты, помеченные датами более 3 месяцев назад, с пометкой "по состоянию на".
+4. БИТЫЕ ССЫЛКИ — [[slug]], которые указывают на несуществующие страницы.
+5. НОВЫЕ СВЯЗИ — потенциально интересные связи между сущностями, которые не отражены.
+
+Отвечай строго JSON:
+{
+  "contradictions": [{"entities": ["slug1", "slug2"], "description": "...", "severity": "high"|"medium"|"low"}],
+  "blind_spots": [{"name": "...", "mention_count": N, "suggested_type": "person"|"company"|"topic"|"country"}],
+  "stale_data": [{"entity": "slug", "fact": "...", "last_date": "YYYY-MM-DD"}],
+  "broken_links": [{"from": "slug", "to": "slug"}],
+  "new_connections": [{"entities": ["slug1", "slug2"], "reason": "..."}],
+  "summary": "1-2 предложения общего здоровья wiki"
+}`;
+
+interface LintResult {
+  contradictions: Array<{ entities: string[]; description: string; severity: string }>;
+  blind_spots: Array<{ name: string; mention_count: number; suggested_type: string }>;
+  stale_data: Array<{ entity: string; fact: string; last_date: string }>;
+  broken_links: Array<{ from: string; to: string }>;
+  new_connections: Array<{ entities: string[]; reason: string }>;
+  summary: string;
+}
+
+async function lintWiki(): Promise<{
+  lint: LintResult;
+  tokens_in: number;
+  tokens_out: number;
+  cost_usd: number;
+  model: string;
+}> {
+  // Load all active wiki entities
+  const { data: entities } = await supabase
+    .from("wiki_entities")
+    .select("canonical, entity_type, slug, file_path, thoughts_count, status")
+    .in("status", ["active", "stale"]);
+
+  if (!entities || entities.length === 0) {
+    throw new Error("No wiki entities to lint");
+  }
+
+  const existingSlugs = new Set(entities.map(e => e.slug));
+
+  // Load all wiki pages from GitHub
+  const pages: string[] = [];
+  for (const e of entities) {
+    const content = await getFileContent(e.file_path);
+    if (content) {
+      pages.push(`=== ${e.slug} (${e.entity_type}: ${e.canonical}) ===\n${content}\n`);
+    }
+  }
+
+  // Load recent thoughts to find blind spots
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const { data: recentThoughts } = await supabase
+    .from("thoughts")
+    .select("content, metadata")
+    .gte("created_at", thirtyDaysAgo.toISOString())
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  // Extract frequently mentioned names not in wiki
+  const mentionedPeople = new Map<string, number>();
+  for (const t of recentThoughts || []) {
+    const people = (t.metadata as Record<string, unknown>)?.people as string[] || [];
+    for (const p of people) {
+      mentionedPeople.set(p, (mentionedPeople.get(p) || 0) + 1);
+    }
+  }
+
+  const untracked = [...mentionedPeople.entries()]
+    .filter(([name, count]) => count >= 3 && !entities.some(e => e.canonical === name))
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 10);
+
+  const untrackedSection = untracked.length > 0
+    ? `\n\nЧасто упоминаемые, но без wiki-страницы:\n${untracked.map(([n, c]) => `- ${n} (${c} упоминаний)`).join("\n")}`
+    : "";
+
+  const existingSlugsSection = `\nСуществующие slugs: ${[...existingSlugs].join(", ")}`;
+
+  const userPrompt = `Проанализируй wiki-страницы и найди проблемы.
+
+${pages.join("\n")}
+${existingSlugsSection}
+${untrackedSection}`;
+
+  const result = await callCompileLLM(LINT_SYSTEM_PROMPT, userPrompt, TASK_MODEL, 4096);
+
+  const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("Failed to parse lint response");
+
+  const lint = JSON.parse(jsonMatch[0]) as LintResult;
+  const cost = estimateCost(TASK_MODEL, result.input_tokens, result.output_tokens);
+
+  return {
+    lint,
+    tokens_in: result.input_tokens,
+    tokens_out: result.output_tokens,
+    cost_usd: Math.round(cost * 10000) / 10000,
+    model: TASK_MODEL,
+  };
 }
 
 // ─── HTTP handler ───
@@ -1049,10 +1226,23 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // Job-run recording is scoped to the compile path (set on startJobRun below);
+  // lint mode and early errors leave it null so they don't touch job_runs.
+  let runId: string | null = null;
   try {
     const body = req.method === "POST"
       ? await req.json().catch(() => ({}))
       : {};
+
+    // Lint mode — separate path, not a tracked nightly job.
+    if (body.mode === "lint") {
+      const result = await lintWiki();
+      return new Response(JSON.stringify(result, null, 2), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    runId = await startJobRun(supabase, "compile-wiki", { pick_one: body.pick_one === true });
 
     const result = await compileWiki({
       force: body.force === true,
@@ -1061,11 +1251,25 @@ Deno.serve(async (req: Request) => {
       pick_one: body.pick_one === true,
     });
 
+    // status from compileWiki: success | partial | failed.
+    // Alert only on a wholesale "failed"; "partial" (one flaky entity) is left to
+    // Phase 8's per-entity backoff and would otherwise spam the every-10-min cron.
+    const jobStatus = result.status === "failed" ? "error" : result.status === "partial" ? "partial" : "success";
+    await finishJobRun(supabase, {
+      runId, job: "compile-wiki", status: jobStatus as "success" | "partial" | "error",
+      error: result.status === "failed" ? `failed: ${JSON.stringify(result.errors).slice(0, 2000)}` : undefined,
+      details: { entities_touched: result.entities_touched, errors: result.errors?.length ?? 0 },
+      alert: result.status === "failed",
+    });
+
     return new Response(JSON.stringify(result, null, 2), {
       headers: { "Content-Type": "application/json" },
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    if (runId) {
+      await finishJobRun(supabase, { runId, job: "compile-wiki", status: "error", error: msg });
+    }
     return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

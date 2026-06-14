@@ -1,7 +1,4 @@
-// Парсит свободный запрос юзера в структурированный intent для голосового звонка.
-// Использует Claude через Anthropic API (тот же ключ, что в granola_sync и process-update).
-
-const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
+import { callLLM, TASK_MODEL } from "../llm.ts";
 
 export interface ParsedIntent {
   goal: string;
@@ -53,31 +50,18 @@ export async function parseIntent(
   userText: string,
   defaultContext?: string,
 ): Promise<ParsedIntent> {
-  if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
-
   const userBlock = defaultContext
     ? `Запрос: ${userText}\n\nИзвестный контекст про пользователя (используй где уместно):\n${defaultContext}`
     : `Запрос: ${userText}`;
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      system: PARSE_PROMPT,
-      messages: [{ role: "user", content: userBlock }],
-    }),
+  const result = await callLLM({
+    model: TASK_MODEL,
+    system: PARSE_PROMPT,
+    user: userBlock,
+    maxTokens: 1024,
   });
 
-  if (!res.ok) throw new Error(`Claude parse failed ${res.status}: ${await res.text()}`);
-  const data = await res.json();
-  const text = data?.content?.[0]?.text?.trim() ?? "";
-  const intent = JSON.parse(text) as ParsedIntent;
+  const intent = JSON.parse(result.text.trim()) as ParsedIntent;
 
   if (!intent.target_phone) {
     const key = (intent.target_org || "").toLowerCase();
