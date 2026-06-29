@@ -1,8 +1,8 @@
 // Single source of truth for topic-extraction rules used across ingest points
-// (open-brain-mcp capture_thought, ingest-thought Slack, telegram-callback-webhook).
+// (open-brain-mcp capture_thought, ingest-thought Slack, ingest-thought-telegram).
 //
 // Goal: every thought lands with topic = "namespace/subtopic[-DD-MM]" so that
-// Stage-4 nightly normalisation has nothing left to do.
+// nightly normalisation has nothing left to do.
 //
 // User-specific vocabulary (namespaces + examples) lives in topic_config.ts,
 // which is gitignored so a public repo link never leaks personal buckets.
@@ -15,10 +15,12 @@ export const TOPIC_RULES = `Format topic as "namespace/subtopic[-DD-MM]" (kebab-
 - A business-project namespace (a country/company/deal bucket) is reserved for that specific project. A personal/household errand that merely shares a keyword does NOT belong there: e.g. picking up a printed t-shirt is a personal errand → "personal/...", NOT a clothing-business deal namespace. Match by the actual subject of the task, not by a lexical overlap with a project name.
 - If area is personal/health and no clearly-matching personal namespace exists, use "personal" (or a personal sub-bucket like "personal/быт") rather than forcing the entry into a work project.
 - subtopic — the MAIN concrete entity of the entry: the person, company, project, or object the action is about (e.g. a surname, a bank, a document). NOT a generic action word.
-  - "Познакомить Карабукаева с Мандрыкой" → subtopic "карабукаев-мандрыка", NOT "знакомство".
-  - "Отправить резюме Арине Князевой" → subtopic "резюме-князева" or "князева", NOT "резюме".
+  - "Познакомить Иванова с Петровым" → subtopic "иванов-петров", NOT "знакомство".
+  - "Отправить резюме Анне Сидоровой" → subtopic "резюме-сидорова" or "сидорова", NOT "резюме".
   - "Письмо в банк по дивидендам" → subtopic "дивиденды-банк", NOT "письмо".
 - NEVER leave subtopic empty and NEVER use a bare verb ("вопросы", "резюме", "письмо", "звонок", "встреча") as the whole subtopic — always anchor it to the named entity. If there is a person/company name in the text, it MUST appear in the subtopic.
+- "Для кого" ≠ "о чём". When a task is phrased as doing something FOR / addressed TO a person, the namespace must reflect the SUBJECT of the work, not the addressee. A work deliverable requested by a person stays in a work namespace/project — e.g. "подготовить для Сергея сводку по бюджету" → subtopic "бюджет-сводка" in a work namespace, NOT "personal/сергей". Use "personal/<person>" only when the relationship itself is the subject (a personal favour, gift, family/household matter).
+- namespace MUST be consistent with the entry's area: if area=work the namespace is the relevant work area/project (never "personal"); if area=personal/health/etc. it is not a work project. Pick area and namespace so they agree.
 - date suffix DD-MM — append when the entry is tied to a specific day or event; omit for evergreen notes.
 - NEVER return "general", "note", "task", "thought", "idea" as the whole topic.
 - ALWAYS include "/" — a topic without slash is invalid.
@@ -73,7 +75,7 @@ const SLUG_STOP = new Set([
 
 // Build a readable kebab slug from free-form content — used as a fallback when the
 // LLM returns no usable subtopic, so the topic still carries the entities/action
-// ("познакомить-карабукаева-с-мандрыкой") instead of a blank "без-темы".
+// ("познакомить-иванова-с-петровым") instead of a blank "без-темы".
 export function slugFromContent(content: string | undefined | null, maxWords = 5): string {
   if (!content) return "";
   const words = content
@@ -116,4 +118,23 @@ export function autocorrectTopic(
   const cleanNs = PLACEHOLDERS.has(head.toLowerCase()) ? ns : head;
   const sub = tail.join("/").replace(/\s+/g, "-");
   return `${cleanNs}/${sub}`;
+}
+
+// Reconcile the topic namespace with the classified area.
+// A valid-but-misclassified topic (e.g. "personal/сидоров" on a work task)
+// never triggers autocorrect, so this runs unconditionally after extraction.
+// Only namespaces that are THEMSELVES one of the six known areas can be "wrong"
+// this way — a project namespace (country/company/deal bucket) is left untouched,
+// since it legitimately differs from the area word.
+export function reconcileTopicArea(
+  topic: string | undefined | null,
+  area: string | undefined | null,
+): string {
+  const t = (topic ?? "").trim();
+  if (!t.includes("/")) return t;
+  if (!area || !KNOWN_AREAS.has(area)) return t;
+  const [head, ...tail] = t.split("/");
+  const h = head.trim().toLowerCase();
+  if (KNOWN_AREAS.has(h) && h !== area) return [area, ...tail].join("/");
+  return t;
 }

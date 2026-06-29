@@ -3,3 +3,7 @@
 downloads/
 src/supabase/.temp/
 *.mp3
+
+# Личные конфиги, создаются из *.example.ts (см. шаг 5.1.1) — не коммитим
+src/supabase/functions/_shared/persona_config.ts
+src/supabase/functions/_shared/topic_config.ts
