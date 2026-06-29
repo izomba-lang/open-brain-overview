@@ -369,13 +369,13 @@ const TOOLS = [
   },
   {
     name: "manage_artifact",
-    description: "Управление артефактами wiki — документы, расчёты, презентации, привязанные к wiki-сущностям. Артефакты появляются на wiki-странице в секции 'Артефакты' при следующей компиляции. Использовать: 'прикрепи финмодель к Alshaya', 'покажи артефакты по Египту', 'удали артефакт'.",
+    description: "Управление артефактами wiki — документы, расчёты, презентации, привязанные к wiki-сущностям. Артефакты появляются на wiki-странице в секции 'Артефакты' при следующей компиляции. Использовать: 'прикрепи финмодель к Acme', 'покажи артефакты по Бразилии', 'удали артефакт'.",
     inputSchema: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["add", "remove", "list"], description: "add — прикрепить артефакт, remove — удалить, list — показать артефакты" },
-        entity: { type: "string", description: "Имя или slug wiki-сущности (для add и list). Пример: 'Alshaya Group', 'egypt', 'mfa-template'" },
-        title: { type: "string", description: "Название артефакта (для add). Пример: 'Финмодель Alshaya Q2'" },
+        entity: { type: "string", description: "Имя или slug wiki-сущности (для add и list). Пример: 'Acme Corp', 'brazil', 'project-alpha'" },
+        title: { type: "string", description: "Название артефакта (для add). Пример: 'Финмодель Acme Q2'" },
         url: { type: "string", description: "Ссылка на артефакт (для add). Google Drive URL, file:///path, или любой другой URL" },
         artifact_type: { type: "string", enum: ["document", "spreadsheet", "presentation", "pdf", "email", "link", "other"], description: "Тип артефакта (для add, по умолчанию document)" },
         description: { type: "string", description: "Краткое описание (для add, опционально)" },
@@ -386,18 +386,18 @@ const TOOLS = [
   },
   {
     name: "compile_wiki",
-    description: "Запустить компиляцию wiki-страницы для одной или всех сущностей. Не ждать ночного cron — скомпилировать прямо сейчас. Использовать: 'скомпилируй Egypt', 'обнови wiki по Alshaya', 'пересобери все wiki-страницы'.",
+    description: "Запустить компиляцию wiki-страницы для одной или всех сущностей. Не ждать ночного cron — скомпилировать прямо сейчас. Использовать: 'скомпилируй Brazil', 'обнови wiki по Acme', 'пересобери все wiki-страницы'.",
     inputSchema: {
       type: "object",
       properties: {
-        entity: { type: "string", description: "Slug или имя сущности для компиляции. Если не указан — компилирует все затронутые (incremental). Примеры: 'egypt', 'Alshaya Group', 'mfa-template'" },
+        entity: { type: "string", description: "Slug или имя сущности для компиляции. Если не указан — компилирует все затронутые (incremental). Примеры: 'brazil', 'Acme Corp', 'project-alpha'" },
         force: { type: "boolean", description: "true — перекомпилировать даже если нет новых thoughts. По умолчанию true для single entity, false для all." },
       },
     },
   },
   {
     name: "manage_wiki_entity",
-    description: "Управление wiki-сущностями и алиасами brain-wiki. Создать/удалить сущность (страну, компанию, топик, человека), добавить/удалить алиас, посмотреть список. Использовать: 'добавь Казахстан в wiki', 'добавь алиас Alshaya для Alshaya Group', 'покажи все wiki-сущности'.",
+    description: "Управление wiki-сущностями и алиасами brain-wiki. Создать/удалить сущность (страну, компанию, топик, человека), добавить/удалить алиас, посмотреть список. Использовать: 'добавь Аргентина в wiki', 'добавь алиас Acme для Acme Corp', 'покажи все wiki-сущности'.",
     inputSchema: {
       type: "object",
       properties: {

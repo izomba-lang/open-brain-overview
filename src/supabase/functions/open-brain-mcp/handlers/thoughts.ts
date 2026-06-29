@@ -252,7 +252,7 @@ export async function handleListThoughts(params: Record<string, unknown>) {
 }
 
 // Build a normalized-name → canonical-name map from the people directory and
-// their aliases, so top_people collapses "Илья"/"Илья Z."/"Ильи" into one
+// their aliases, so top_people collapses "Ivanov"/"I. Ivanov"/"Ivanova" into one
 // canonical person instead of counting each raw metadata.people string apart.
 // Only explicit links collapse (a person's own name, or an alias row added by
 // merge_person/manage_alias) — ambiguous bare names stay as-is, so this never

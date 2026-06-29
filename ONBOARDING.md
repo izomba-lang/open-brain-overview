@@ -66,7 +66,7 @@ OpenRouter API (embeddings + LLM)
 4. Страница коммитится в приватный GitHub-репо `brain-wiki`
 
 Утром открываешь Obsidian (с Obsidian Git plugin) — свежая wiki с кросс-ссылками и Graph View:
-- `countries/turkey.md` — всё по конкретному рынку
+- `countries/germany.md` — всё по конкретному рынку
 - `people/ivanov.md` — история взаимодействия с контактом
 - `topics/tax-planning.md` — тематическая сводка
 - `_contradictions.md` — где данные конфликтуют между собой
@@ -83,4 +83,4 @@ search_thoughts, list_thoughts, thought_stats, capture_thought, update_thought, 
 
 - Через Telegram: просто пиши текст (сохранится как мысль), начни с `?` для вопроса
 - Через AI: "Что я знаю про X?", "Подготовь бриф к встрече", "Напиши фоллоуап"
-- Wiki: "Добавь Казахстан в wiki", "Прикрепи финмодель к странице Turkey"
+- Wiki: "Добавь Аргентина в wiki", "Прикрепи финмодель к странице Germany"

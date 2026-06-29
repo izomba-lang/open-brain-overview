@@ -47,7 +47,7 @@
 
 ### 3. Чтение (Obsidian)
 Утром открываешь Obsidian — свежая wiki с кросс-ссылками и Graph View:
-- `countries/turkey.md` — всё что знаешь про конкретный рынок
+- `countries/germany.md` — всё что знаешь про конкретный рынок
 - `people/ivanov.md` — история взаимодействия с контактом
 - `topics/tax-planning.md` — тематическая сводка
 - `_contradictions.md` — где данные конфликтуют между собой
@@ -150,7 +150,7 @@ open-brain-overview/
 **Через AI-клиент (Claude Desktop / Cursor):**
 - "Подготовь бриф к встрече с партнёром" — `route_task` найдёт skill `meeting-brief`
 - "Что я знаю про налоговое планирование?" — `search_thoughts` по базе
-- "Добавь Казахстан в wiki" — `manage_wiki_entity` + `compile_wiki`
+- "Добавь Аргентина в wiki" — `manage_wiki_entity` + `compile_wiki`
 - "Прикрепи финмодель к проекту" — `manage_artifact`
 
 ## Лицензия

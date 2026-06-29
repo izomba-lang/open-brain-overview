@@ -488,6 +488,37 @@ curl -s -X POST "https://<project-ref>.supabase.co/functions/v1/open-brain-mcp?k
    - **Endpoint**: `https://<project-ref>.supabase.co/functions/v1/open-brain-mcp`
    - **API Key**: твой `MCP_ACCESS_KEY`
 
+## Шаг 10. Чтение wiki в Obsidian (опционально)
+
+Это слой поверх базы мыслей: ночной компилятор (`compile-wiki`) собирает мысли по
+сущностям (страны, люди, компании, топики) в markdown-страницы и коммитит их в
+отдельный GitHub-репозиторий. Ты читаешь и правишь эти страницы в Obsidian.
+
+> Требует **продвинутой схемы** (таблицы `wiki_entities`, `wiki_compile_runs` и др.,
+> см. шаг 2.9) и `ANTHROPIC_API_KEY` для качественного синтеза. Базовый сценарий
+> (capture + поиск + бот) работает и без этого слоя.
+
+1. **Создай приватный GitHub-репозиторий** для wiki (например, `brain-wiki`).
+2. **Выдай функции доступ к нему** — задай секреты:
+   ```bash
+   supabase secrets set \
+     GITHUB_TOKEN="ghp_..." \          # PAT с правом push в этот репо
+     GITHUB_REPO="<user>/brain-wiki" \
+     ANTHROPIC_API_KEY="sk-ant-..."
+   ```
+   Имя репо также прописано в `persona_config.ts` (`WIKI_REPO`) — оно должно совпадать.
+3. **Задеплой компилятор**: `supabase functions deploy compile-wiki --no-verify-jwt`.
+4. **Запусти компиляцию** — из AI-клиента «скомпилируй все wiki-страницы»
+   (`compile_wiki`) или дёрни функцию напрямую. Страницы появятся в `brain-wiki`.
+5. **Открой wiki в Obsidian:**
+   - Установи [Obsidian](https://obsidian.md), затем плагин **Obsidian Git**
+     (Settings → Community plugins → Browse → "Obsidian Git").
+   - Открой клон репозитория `brain-wiki` как vault (или склонируй его в папку vault'а).
+   - Включи в Obsidian Git авто-pull (например, каждые N минут) — и каждое утро
+     получаешь свежую wiki с кросс-ссылками `[[entity]]` и Graph View.
+   - Правки, сделанные в Obsidian, компилятор не затирает: блоки `<!-- USER: ... -->`
+     сохраняются как есть.
+
 ---
 
 ## Как пользоваться
