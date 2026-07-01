@@ -53,7 +53,6 @@ create table public.thoughts (
   content text not null,
   embedding vector(1536),
   metadata jsonb default '{}'::jsonb,
-  due_date timestamptz,           -- дедлайн задачи (фильтры deadline_before/after, /tasks, overdue)
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -214,51 +213,17 @@ end;
 $$;
 ```
 
-### 2.8. RLS и права для service_role (обязательный шаг)
-
-Edge Functions ходят в базу под `service_role` — этот ключ по умолчанию обходит RLS.
-Но при некоторых конфигурациях (особенно с новой системой API-ключей Supabase) запросы
-падают с `permission denied for table thoughts`. Чтобы гарантированно не ловить эту ошибку,
-выполни оба блока:
+### 2.8. Отключи RLS (для Edge Functions с service role)
 
 ```sql
--- 1. Включаем RLS (service_role всё равно его обходит; это защита для anon/authenticated)
 alter table public.thoughts enable row level security;
-alter table public.people   enable row level security;
+alter table public.people enable row level security;
 alter table public.projects enable row level security;
-alter table public.skills   enable row level security;
+alter table public.skills enable row level security;
 
--- 2. Явно выдаём права service_role на все таблицы и последовательности схемы public
-grant usage on schema public to service_role;
-grant all privileges on all tables    in schema public to service_role;
-grant all privileges on all sequences in schema public to service_role;
-grant all privileges on all functions in schema public to service_role;
-
--- 3. И на будущие таблицы/функции (чтобы новые миграции не требовали повторного grant)
-alter default privileges in schema public grant all on tables    to service_role;
-alter default privileges in schema public grant all on sequences to service_role;
-alter default privileges in schema public grant all on functions to service_role;
+-- Edge Functions используют service_role key, который обходит RLS
+-- Если хочешь дополнительную защиту, добавь policies
 ```
-
-> Если после этого всё ещё ловишь `permission denied` — как аварийный вариант можно
-> временно отключить RLS: `alter table public.thoughts disable row level security;`
-> (и аналогично для people/projects/skills). Но `grant` выше — предпочтительнее.
-
-### 2.9. Что покрывает эта схема (и что — нет)
-
-Схема выше — это **ядро**: его достаточно, чтобы заработали capture, семантический
-поиск, задачи/дедлайны, проекты, люди, скиллы и Telegram-бот. На этом ядре работают
-основные инструменты MCP: `capture_thought`, `search_thoughts`, `list_thoughts`,
-`update_thought`, `manage_project`, `manage_person`, `list_skills`, `route_task`,
-`import_skill`, `thought_stats`.
-
-`open-brain-mcp` в репозитории — полная версия и содержит ещё и **продвинутые**
-инструменты (health-трекинг, компиляция wiki, голосовой агент, поиск по транскриптам,
-алиасы людей, артефакты). Им нужны дополнительные таблицы и RPC, которых в этой
-быстрой схеме нет — такие инструменты вернут ошибку вида `relation "wiki_entities"
-does not exist`, пока ты не накатишь соответствующие миграции. Это нормально: ядро от
-этого не страдает. Если захочешь включить продвинутый слой — заводи таблицы под
-конкретный инструмент по мере необходимости.
 
 ## Шаг 3. Получи API-ключи
 
@@ -270,12 +235,6 @@ does not exist`, пока ты не накатишь соответствующ�
 | **Telegram** | Bot Token | [@BotFather](https://t.me/BotFather) — создай нового бота |
 | **Telegram** | Твой User ID | [@userinfobot](https://t.me/userinfobot) — чтобы бот работал только для тебя |
 | **Groq** | API Key | [console.groq.com](https://console.groq.com) — для транскрипции голосовых |
-
-> **Важно: пополни баланс OpenRouter.** Сохранение мыслей и поиск используют платные
-> вызовы (embeddings + extraction). На нулевом балансе OpenRouter отвечает
-> `401 User not found` — и это легко принять за неверный ключ, хотя дело в кредитах.
-> Закинь хотя бы $5 на [openrouter.ai/credits](https://openrouter.ai/credits), иначе
-> `capture_thought` и Telegram-бот не заработают.
 
 Придумай свой **MCP_ACCESS_KEY** — любая длинная случайная строка, которая будет паролем к API (например, сгенерируй через `openssl rand -hex 24`).
 
@@ -313,37 +272,13 @@ cd open-brain-overview/src
 ```
 src/
 ├── supabase/functions/
-│   ├── open-brain-mcp/                ← MCP-сервер (handlers + client/transport)
-│   ├── ingest-thought-telegram/index.ts ← Telegram-бот (текст + голос)
-│   ├── ingest-thought/index.ts        ← Slack-пайплайн (опционально)
-│   ├── compile-wiki/index.ts          ← ночной компилятор wiki (опционально)
-│   └── _shared/                       ← общий код: ingest, llm, people, topic-rules…
+│   ├── open-brain-mcp/index.ts       ← MCP-сервер (15 инструментов)
+│   ├── ingest-thought-telegram/index.ts ← Telegram-бот
+│   └── ingest-thought/index.ts        ← Slack-пайплайн (опционально)
 ├── supabase/migrations/               ← SQL-миграция для skills
 ├── chrome-extension/                  ← Chrome new tab dashboard
 └── deploy.sh                          ← Скрипт деплоя с версионированием
 ```
-
-> **Сразу скачивай `.ts` через `git clone`, а не по одному файлу из браузера** —
-> GitHub отдаёт `.ts` как `text/plain`, и браузер часто открывает их вместо
-> сохранения, ломая структуру. Клон сохраняет все файлы и вложенность как есть.
-
-### 5.1.1. Создай личные конфиги из шаблонов
-
-В `_shared/` лежат два шаблона с суффиксом `.example`. Код импортирует их **без**
-суффикса, а реальные версии добавлены в `.gitignore` — так твои имена, проекты и
-namespace'ы не попадают в публичный репозиторий. Перед деплоем скопируй шаблоны и
-подставь свои данные (имя/должность в `persona_config.ts`, свои namespace'ы и примеры
-в `topic_config.ts`):
-
-```bash
-cd src/supabase/functions/_shared
-cp persona_config.example.ts persona_config.ts
-cp topic_config.example.ts   topic_config.ts
-cd -
-```
-
-> Если не скопировать — деплой упадёт с понятной ошибкой импорта
-> (`Module not found: ./topic_config.ts`). Это и есть напоминание создать конфиги.
 
 ### 5.2. Инициализируй Supabase-проект
 
@@ -361,21 +296,8 @@ supabase secrets set \
   MCP_ACCESS_KEY="<твой_сгенерированный_ключ>" \
   TELEGRAM_BOT_TOKEN="123456:ABC-DEF..." \
   TELEGRAM_ALLOWED_USER_ID="123456789" \
-  GROQ_API_KEY="gsk_..." \
-  SERVICE_ROLE_KEY="<твой_service_role_key>"
+  GROQ_API_KEY="gsk_..."
 ```
-
-> **Про `SERVICE_ROLE_KEY`.** Edge Functions ходят в базу под service_role. Раньше
-> Supabase автоматически прокидывал `SUPABASE_SERVICE_ROLE_KEY`, но с новой системой
-> ключей это срабатывает не всегда, а задать секрет с префиксом `SUPABASE_` нельзя
-> (`Env name cannot start with SUPABASE_, skipping`). Поэтому код читает сначала
-> `SERVICE_ROLE_KEY`, и только потом — авто-переменную. Скопируй service_role key из
-> **Supabase Dashboard → Project Settings → API → Project API keys → `service_role`**
-> и задай его под именем `SERVICE_ROLE_KEY`, как выше.
-
-> **Опционально — `ANTHROPIC_API_KEY`.** Нужен только для функций, генерирующих текст
-> через Claude (ночной компилятор wiki, план дня высокого качества). Для базового
-> сценария (capture + поиск + Telegram-бот) не требуется — там всё на OpenRouter.
 
 ### 5.4. Задеплой функции
 
@@ -465,18 +387,6 @@ curl -s -X POST "https://<project-ref>.supabase.co/functions/v1/open-brain-mcp?k
 - **URL**: `https://<project-ref>.supabase.co/functions/v1/open-brain-mcp?key=<MCP_ACCESS_KEY>`
 - **Transport**: HTTP (JSON-RPC 2.0)
 
-### ChatGPT
-
-Подключение MCP к ChatGPT требует двух вещей:
-
-1. **Платный план** (Plus/Pro/Team) — на бесплатном кастомные коннекторы недоступны.
-2. **Developer Mode** — включается в **Settings → Connectors → Advanced → Developer
-   Mode**. Учти: он **отключает встроенную память ChatGPT** в пользу внешних
-   коннекторов — это ожидаемо, память теперь живёт в Open Brain.
-
-Дальше добавь коннектор с тем же URL и `?key=<MCP_ACCESS_KEY>`. Подробнее — в
-`skills/open-brain-companion/SKILL.md`.
-
 ## Шаг 9. Chrome-расширение (опционально)
 
 1. Открой `chrome://extensions/`
@@ -487,37 +397,6 @@ curl -s -X POST "https://<project-ref>.supabase.co/functions/v1/open-brain-mcp?k
 6. Введи в настройках:
    - **Endpoint**: `https://<project-ref>.supabase.co/functions/v1/open-brain-mcp`
    - **API Key**: твой `MCP_ACCESS_KEY`
-
-## Шаг 10. Чтение wiki в Obsidian (опционально)
-
-Это слой поверх базы мыслей: ночной компилятор (`compile-wiki`) собирает мысли по
-сущностям (страны, люди, компании, топики) в markdown-страницы и коммитит их в
-отдельный GitHub-репозиторий. Ты читаешь и правишь эти страницы в Obsidian.
-
-> Требует **продвинутой схемы** (таблицы `wiki_entities`, `wiki_compile_runs` и др.,
-> см. шаг 2.9) и `ANTHROPIC_API_KEY` для качественного синтеза. Базовый сценарий
-> (capture + поиск + бот) работает и без этого слоя.
-
-1. **Создай приватный GitHub-репозиторий** для wiki (например, `brain-wiki`).
-2. **Выдай функции доступ к нему** — задай секреты:
-   ```bash
-   supabase secrets set \
-     GITHUB_TOKEN="ghp_..." \          # PAT с правом push в этот репо
-     GITHUB_REPO="<user>/brain-wiki" \
-     ANTHROPIC_API_KEY="sk-ant-..."
-   ```
-   Имя репо также прописано в `persona_config.ts` (`WIKI_REPO`) — оно должно совпадать.
-3. **Задеплой компилятор**: `supabase functions deploy compile-wiki --no-verify-jwt`.
-4. **Запусти компиляцию** — из AI-клиента «скомпилируй все wiki-страницы»
-   (`compile_wiki`) или дёрни функцию напрямую. Страницы появятся в `brain-wiki`.
-5. **Открой wiki в Obsidian:**
-   - Установи [Obsidian](https://obsidian.md), затем плагин **Obsidian Git**
-     (Settings → Community plugins → Browse → "Obsidian Git").
-   - Открой клон репозитория `brain-wiki` как vault (или склонируй его в папку vault'а).
-   - Включи в Obsidian Git авто-pull (например, каждые N минут) — и каждое утро
-     получаешь свежую wiki с кросс-ссылками `[[entity]]` и Graph View.
-   - Правки, сделанные в Obsidian, компилятор не затирает: блоки `<!-- USER: ... -->`
-     сохраняются как есть.
 
 ---
 
@@ -611,26 +490,6 @@ curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 
 ### MCP возвращает 401
 Проверь, что `MCP_ACCESS_KEY` совпадает с тем, что передаёшь в `?key=`.
-
-### Сохранение мысли падает с `401 User not found`
-Это ошибка **OpenRouter**, а не Supabase: на балансе нет кредитов. Пополни OpenRouter
-(см. Шаг 3) — `capture_thought` и бот заработают.
-
-### `permission denied for table thoughts`
-Не выполнен grant для service_role. Вернись к **шагу 2.8** и накати блок с `grant ...`.
-
-### `column thoughts.due_date does not exist`
-Таблица создана по старой схеме без `due_date`. Добавь колонку:
-```sql
-alter table public.thoughts add column if not exists due_date timestamptz;
-```
-
-### `Module not found` при деплое (`topic_config.ts` / `persona_config.ts`)
-Не скопированы личные конфиги из шаблонов. См. **шаг 5.1.1** (`cp *.example.ts → *.ts`).
-
-### Инструмент вернул `relation "..." does not exist`
-Ты дёрнул продвинутый инструмент (health/wiki/voice/transcripts), для которого нужна
-доп. таблица. Для базового сценария это не нужно — см. **шаг 2.9**.
 
 ### Поиск ничего не находит
 Убедись, что pgvector extension включен и `match_thoughts` функция создана. Попробуй уменьшить threshold до 0.3.
