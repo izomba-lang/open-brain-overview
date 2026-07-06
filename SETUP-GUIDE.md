@@ -9,7 +9,6 @@
 - **Telegram-бот** — кидаешь текст или голосовое, бот сохраняет как "мысль" с автоматической категоризацией
 - **Команды**: `/today` (план на день), `/tasks` (список задач), вопросы к базе знаний
 - **MCP-сервер** — подключается к Claude Desktop, ChatGPT, Cursor и любому AI-клиенту
-- **Chrome-расширение** — новая вкладка показывает топ-3 приоритетных задач
 - **Семантический поиск** — ищет по смыслу, а не по словам
 - **Система скиллов** — готовые "рецепты" для задач: meeting-brief, follow-up, weekly-report и другие. Можно создавать свои и импортировать из GitHub
 
@@ -276,7 +275,6 @@ src/
 │   ├── ingest-thought-telegram/index.ts ← Telegram-бот
 │   └── ingest-thought/index.ts        ← Slack-пайплайн (опционально)
 ├── supabase/migrations/               ← SQL-миграция для skills
-├── chrome-extension/                  ← Chrome new tab dashboard
 └── deploy.sh                          ← Скрипт деплоя с версионированием
 ```
 
@@ -387,17 +385,6 @@ curl -s -X POST "https://<project-ref>.supabase.co/functions/v1/open-brain-mcp?k
 - **URL**: `https://<project-ref>.supabase.co/functions/v1/open-brain-mcp?key=<MCP_ACCESS_KEY>`
 - **Transport**: HTTP (JSON-RPC 2.0)
 
-## Шаг 9. Chrome-расширение (опционально)
-
-1. Открой `chrome://extensions/`
-2. Включи **Developer mode**
-3. Нажми **Load unpacked**
-4. Выбери папку `chrome-extension/`
-5. Открой новую вкладку — появится дэшборд
-6. Введи в настройках:
-   - **Endpoint**: `https://<project-ref>.supabase.co/functions/v1/open-brain-mcp`
-   - **API Key**: твой `MCP_ACCESS_KEY`
-
 ---
 
 ## Как пользоваться
@@ -494,15 +481,11 @@ curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 ### Поиск ничего не находит
 Убедись, что pgvector extension включен и `match_thoughts` функция создана. Попробуй уменьшить threshold до 0.3.
 
-### Chrome-расширение не загружает задачи
-Проверь endpoint (должен быть без `/` в конце) и API key в настройках расширения.
-
 ---
 
 ## Кастомизация
 
-- **Язык** — бот и дэшборд на русском. Чтобы переключить на английский, поменяй строки в `ingest-thought-telegram/index.ts` и `chrome-extension/newtab.js`
-- **Приоритизация задач** — логика скоринга в `newtab.js` → `pickTopTasks()`. Можно менять веса
+- **Язык** — бот на русском. Чтобы переключить на английский, поменяй строки в `ingest-thought-telegram/index.ts`
 - **Стиль письма** — сохрани мысль с `source: "style_analysis"` через `capture_thought`, и AI будет использовать твой стиль при генерации текстов
 - **Slack-интеграция** — задеплой `ingest-thought`, создай Slack App с Event Subscriptions, укажи URL функции
 
