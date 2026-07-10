@@ -1,89 +1,89 @@
-# Как подключить личный Gmail и Drive в Cowork
+# How to connect a personal Gmail and Drive account in Cowork
 
-Краткий гайд: как поднять второй (личный) Google-аккаунт в Cowork параллельно с рабочим, через собственный MCP-сервер.
+A short guide on running a second (personal) Google account in Cowork alongside a work account, through your own MCP server.
 
-## Зачем это нужно
+## Why this is needed
 
-Cowork поддерживает только один инстанс нативного Google Workspace-коннектора. Если у тебя уже подключён рабочий `@company.com` через нативный коннектор и нужен ещё личный `@gmail.com` — нужен второй канал. Решение: поднять собственный MCP-сервер для личного аккаунта и зарегистрировать его как Custom Connector рядом с нативным.
+Cowork only supports one instance of the native Google Workspace connector. If you already have a work `@company.com` account connected through the native connector and you also need a personal `@gmail.com` one, you need a second channel. The fix: stand up your own MCP server for the personal account and register it as a Custom Connector next to the native one.
 
-Инструменты будут с префиксом `personal_` (`personal_gmail_search`, `personal_drive_list` и т.д.), чтобы LLM не путалась, куда обращаться. По запросу "что в личной почте" вызовется `personal_gmail_search`, по запросу "что в рабочей" — нативный `gmail_search`.
+The tools are prefixed with `personal_` (`personal_gmail_search`, `personal_drive_list`, etc.) so the LLM doesn't get confused about which one to call. A request like "what's new in my personal email" calls `personal_gmail_search`; "what's new in my work email" calls the native `gmail_search`.
 
-## Что получишь в итоге
+## What you end up with
 
-- **12 инструментов** через Custom Connector в Cowork:
+- **12 tools** through a Custom Connector in Cowork:
   - Gmail: `search`, `get_thread`, `list_labels`, `draft_create`, `draft_preview`, `send`, `modify_labels`
   - Drive: `list`, `search`, `read`, `create`, `update`
-- **Защита от случайной отправки писем** — send требует confirmation token из предварительного `draft_create` или `draft_preview`. Модель не сможет отправить письмо без явного draft-шага.
-- **Drive-скоупинг** — по умолчанию все операции в папке `Claude Workspace`. Чтобы вылезти за её пределы — нужен явный `scope="full_drive"`.
-- **Аудит-лог** в Supabase: какой tool, когда, успех/ошибка, длительность, ID ресурса. Без содержимого писем и файлов.
+- **Protection against accidental sends** — `send` requires a confirmation token from a prior `draft_create` or `draft_preview` call. The model can't send an email without an explicit draft step.
+- **Drive scoping** — by default all operations are confined to a `Claude Workspace` folder. Escaping it requires an explicit `scope="full_drive"`.
+- **Audit log** in Supabase: which tool, when, success/failure, duration, resource ID. No email or file content.
 
-## Что нужно иметь под рукой
+## What you'll need on hand
 
-- Аккаунт в Google Cloud Platform (бесплатный, free trial не обязателен)
-- Supabase-проект (тот же, что для Open Brain — `<твой_project_ref>`)
-- Установленный Supabase CLI (`brew install supabase/tap/supabase`)
-- 30-40 минут
+- A Google Cloud Platform account (free, no paid trial required)
+- A Supabase project (the same one you use for Open Brain — `<your_project_ref>`)
+- The Supabase CLI installed (`brew install supabase/tap/supabase`)
+- 30–40 minutes
 
-## Шаг 1. Google Cloud Console — настройка OAuth
+## Step 1. Google Cloud Console — OAuth setup
 
-### 1.1. Включить API
+### 1.1. Enable the APIs
 
-В Google Cloud Console (любой проект):
+In Google Cloud Console (any project):
 - ☰ → **APIs & Services** → **Library**
-- Включить **Gmail API** и **Google Drive API**
+- Enable **Gmail API** and **Google Drive API**
 
-### 1.2. Настроить OAuth consent screen
+### 1.2. Configure the OAuth consent screen
 
 - **APIs & Services** → **OAuth consent screen**
 - User Type: **External** → Create
-- App name: что-то понятное, например `Personal Google MCP`
-- User support email и Developer email — свой
-- Scopes можно не добавлять (запросим в URL)
-- Test users → добавить свой gmail
+- App name: something recognizable, e.g. `Personal Google MCP`
+- User support email and Developer email — your own
+- Scopes can be left empty (we'll request them in the URL)
+- Test users → add your own gmail
 - Save
 
-**Важно: сразу опубликовать app** (Publishing status → **Publish app**). В Testing-режиме refresh token живёт всего 7 дней. После публикации Google показывает warning "unverified", но токен становится бессрочным.
+**Important: publish the app right away** (Publishing status → **Publish app**). In Testing mode the refresh token only lives 7 days. Once published, Google shows an "unverified" warning, but the token becomes permanent.
 
-### 1.3. Создать OAuth Client ID
+### 1.3. Create an OAuth Client ID
 
-Здесь есть нюанс. **Не делай Desktop app** — Google задепрекейтил OOB redirect, и Desktop-клиенты теперь плохо работают через `urn:ietf:wg:oauth:2.0:oob`. Делай Web app:
+There's a catch here. **Don't create a Desktop app** — Google deprecated the OOB redirect, and Desktop clients now work poorly with `urn:ietf:wg:oauth:2.0:oob`. Create a Web app instead:
 
 - **APIs & Services** → **Credentials** → **+ Create Credentials** → **OAuth client ID**
 - Application type: **Web application**
-- Name: например `Personal Google MCP Web`
+- Name: e.g. `Personal Google MCP Web`
 - **Authorized redirect URIs** → Add: `https://developers.google.com/oauthplayground`
 - Create
-- Скопировать **Client ID** и **Client Secret** — сейчас понадобятся
+- Copy the **Client ID** and **Client Secret** — you'll need them next
 
-## Шаг 2. Получить refresh token через OAuth Playground
+## Step 2. Get a refresh token via OAuth Playground
 
-OAuth Playground — Google-hosted тулза, через которую можно один раз получить refresh token без локальных скриптов.
+OAuth Playground is a Google-hosted tool that lets you get a refresh token once, without any local scripts.
 
-1. Открыть https://developers.google.com/oauthplayground/
-2. ⚙ (шестерёнка, правый верх) → ✅ **Use your own OAuth credentials** → вставить Client ID и Client Secret → Close
-3. В левой панели **Step 1**, в поле "Input your own scopes" вставить (через пробел):
+1. Open https://developers.google.com/oauthplayground/
+2. ⚙ (gear icon, top right) → check **Use your own OAuth credentials** → paste your Client ID and Client Secret → Close
+3. In the left panel, **Step 1**, in the "Input your own scopes" field, paste (space-separated):
    ```
    https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/drive
    ```
-4. **Authorize APIs** → залогиниться личным gmail → разрешить доступ
-5. После редиректа окажешься на **Step 2** → нажать **Exchange authorization code for tokens**
-6. В правой панели появится JSON с `refresh_token` — сохранить значение
+4. **Authorize APIs** → log in with your personal gmail → grant access
+5. After the redirect you'll land on **Step 2** → click **Exchange authorization code for tokens**
+6. The right panel will show JSON containing `refresh_token` — save that value
 
-Почему `gmail.modify`, а не `gmail.full`: modify даёт read + draft + send + labels + archive, но НЕ даёт permanent delete. Это компромисс — нельзя случайно (или через prompt injection) удалить почту навсегда.
+Why `gmail.modify` and not `gmail.full`: modify grants read + draft + send + labels + archive, but NOT permanent delete. That's a deliberate tradeoff — nothing can permanently delete mail by accident (or via prompt injection).
 
-## Шаг 3. Создать папку Claude Workspace в Drive
+## Step 3. Create a Claude Workspace folder in Drive
 
-В личном Google Drive создай папку (имя любое, например `Claude Workspace`). Открой её, скопируй ID из URL — это часть после `/folders/`:
+In your personal Google Drive, create a folder (any name, e.g. `Claude Workspace`). Open it and copy the ID from the URL — the part after `/folders/`:
 
 ```
 https://drive.google.com/drive/folders/1T6C9ZMKf3pdFZzvyHp-Z_AbglrPuvkFk
                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                                       это folder ID
+                                       this is the folder ID
 ```
 
-Все Drive-операции по умолчанию будут scoped в эту папку.
+All Drive operations will be scoped to this folder by default.
 
-## Шаг 4. Положить секреты в Supabase
+## Step 4. Store the secrets in Supabase
 
 ```bash
 supabase secrets set \
@@ -91,55 +91,55 @@ supabase secrets set \
   PERSONAL_GOOGLE_CLIENT_SECRET="<client_secret>" \
   PERSONAL_GOOGLE_REFRESH_TOKEN="<refresh_token>" \
   PERSONAL_GOOGLE_WORKSPACE_FOLDER_ID="<folder_id>" \
-  --project-ref <твой_project_ref>
+  --project-ref <your_project_ref>
 ```
 
-## Шаг 5. Задеплоить Edge Function
+## Step 5. Deploy the Edge Function
 
-Код сервера лежит в Open Brain репозитории: [supabase/functions/personal-google-mcp/](../../supabase/functions/personal-google-mcp/).
+The server code lives in the Open Brain repository: [supabase/functions/personal-google-mcp/](../../supabase/functions/personal-google-mcp/).
 
 ```bash
 cd /path/to/open-brain
-supabase functions deploy personal-google-mcp --no-verify-jwt --project-ref <твой_project_ref>
+supabase functions deploy personal-google-mcp --no-verify-jwt --project-ref <your_project_ref>
 ```
 
-Auth через `MCP_ACCESS_KEY` — тот же, что у Open Brain, можно переиспользовать.
+Auth is via `MCP_ACCESS_KEY`, the same one Open Brain uses — you can reuse it.
 
-## Шаг 6. Прогнать SQL-миграцию для аудит-логов
+## Step 6. Run the audit-log SQL migration
 
-В Supabase Dashboard → **Database** → **Extensions** → включить `pg_cron` (если ещё не включён).
+In the Supabase Dashboard → **Database** → **Extensions**, enable `pg_cron` if it isn't already.
 
-Затем в SQL Editor выполнить миграцию `supabase/migrations/20260511_personal_google_mcp_audit.sql` (есть в коде сервера). Она создаст:
-- Схему `personal_google_mcp`
-- Таблицу `tool_calls` (метаданные вызовов, без контента)
-- Индексы для быстрых запросов
-- pg_cron-задачу очистки записей старше 90 дней
+Then, in the SQL Editor, run the `supabase/migrations/20260511_personal_google_mcp_audit.sql` migration (shipped with the server code). It creates:
+- A `personal_google_mcp` schema
+- A `tool_calls` table (call metadata, no content)
+- Indexes for fast queries
+- A pg_cron job that prunes records older than 90 days
 
-## Шаг 7. Экспонировать схему через PostgREST
+## Step 7. Expose the schema via PostgREST
 
-Без этого аудит-инсерты будут падать с 404 (но это fire-and-forget — основные tool calls не сломаются).
+Without this, audit inserts will fail with 404 (but it's fire-and-forget — actual tool calls won't break).
 
-Supabase Dashboard → **Settings** → **API** → **Data API** → **Settings** → **Exposed schemas** → добавить `personal_google_mcp` через запятую к существующим → Save.
+Supabase Dashboard → **Settings** → **API** → **Data API** → **Settings** → **Exposed schemas** → add `personal_google_mcp` to the comma-separated list → Save.
 
-## Шаг 8. Зарегистрировать в Cowork
+## Step 8. Register it in Cowork
 
-В Cowork → Add Custom Connector → ввести URL:
+In Cowork → Add Custom Connector → enter the URL:
 
 ```
-https://<твой_project_ref>.supabase.co/functions/v1/personal-google-mcp?key=<твой_MCP_ACCESS_KEY>
+https://<your_project_ref>.supabase.co/functions/v1/personal-google-mcp?key=<your_MCP_ACCESS_KEY>
 ```
 
-После подключения видны все 12 personal_* инструментов.
+Once connected, all 12 personal_* tools should be visible.
 
-## Проверка работы
+## Verifying it works
 
-В Cowork в одной сессии задать:
+In a single Cowork session, ask:
 
-1. **"Что у меня нового в личной почте?"** → должен вызваться `personal_gmail_search`
-2. **"Что у меня нового в рабочей почте?"** → должен вызваться нативный `gmail_search`
-3. **"Создай файл test.txt в моей Claude Workspace папке с текстом hello"** → `personal_drive_create`
+1. **"What's new in my personal email?"** → should call `personal_gmail_search`
+2. **"What's new in my work email?"** → should call the native `gmail_search`
+3. **"Create a file test.txt in my Claude Workspace folder with the text hello"** → `personal_drive_create`
 
-Аудит проверить SQL-запросом в Supabase:
+Check the audit log with a SQL query in Supabase:
 
 ```sql
 select tool_name, status, duration_ms, ts
@@ -147,52 +147,52 @@ from personal_google_mcp.tool_calls
 order by ts desc limit 10;
 ```
 
-## Подводные камни, на которые я наткнулся
+## Gotchas I ran into
 
-| Проблема | Симптом | Решение |
+| Problem | Symptom | Fix |
 |----------|---------|---------|
-| OOB redirect deprecated | `Error 400: invalid_request` при OAuth flow | Использовать Web app тип OAuth client + OAuth Playground |
-| Testing mode → 7-дневный refresh token | Через неделю ничего не работает | Опубликовать app в OAuth consent screen |
-| Drive API not enabled | `Error 403: SERVICE_DISABLED` при первом вызове Drive | Включить Drive API в Library |
-| In-memory token state не выживает между Edge Function воркерами | `Invalid or expired confirmation_token` сразу после draft_create | Stateless HMAC-токены (уже зашиты в коде) |
-| `cron schema not exist` при миграции | Миграция падает | Включить `pg_cron` extension в Database → Extensions |
-| Аудит-логи не пишутся | Таблица пустая после tool calls | Добавить схему в Exposed schemas |
+| OOB redirect deprecated | `Error 400: invalid_request` during the OAuth flow | Use a Web app type OAuth client + OAuth Playground |
+| Testing mode → 7-day refresh token | Everything stops working after a week | Publish the app in the OAuth consent screen |
+| Drive API not enabled | `Error 403: SERVICE_DISABLED` on the first Drive call | Enable the Drive API in the Library |
+| In-memory token state doesn't survive across Edge Function workers | `Invalid or expired confirmation_token` right after draft_create | Stateless HMAC tokens (already built into the code) |
+| `cron schema not exist` during migration | The migration fails | Enable the `pg_cron` extension in Database → Extensions |
+| Audit logs aren't written | The table is empty after tool calls | Add the schema to Exposed schemas |
 
-## Безопасность — что заложено
+## Security — what's built in
 
-- **Send guard:** для отправки нужен confirmation_token, который выдаётся только из предварительного `draft_create` или `draft_preview`. Это блокирует prompt injection через содержимое писем — модель не сможет отправить что-то "по случайности".
-- **Drive scoping:** все операции по умолчанию в `Claude Workspace`. Выйти за пределы — только явный `scope: "full_drive"`.
-- **Гранулярный scope:** `gmail.modify` вместо `gmail.full` — нельзя permanent delete.
-- **Аудит без контента:** в логи пишутся метаданные (тул, статус, длительность, ID ресурса), но НЕ тело писем, имена файлов или search queries.
+- **Send guard:** sending requires a confirmation_token, which is only issued by a prior `draft_create` or `draft_preview` call. This blocks prompt injection via email content — the model can't send anything "by accident."
+- **Drive scoping:** all operations default to the `Claude Workspace` folder. Escaping it requires an explicit `scope: "full_drive"`.
+- **Granular scope:** `gmail.modify` instead of `gmail.full` — no permanent delete.
+- **Content-free audit:** logs record metadata (tool, status, duration, resource ID), but NOT email bodies, file names, or search queries.
 
-## Где код
+## Where the code lives
 
-Сам MCP-сервер — Supabase Edge Function на Deno. Структура:
+The MCP server itself is a Supabase Edge Function on Deno. Structure:
 
 ```
 supabase/
 ├── functions/
 │   └── personal-google-mcp/
-│       ├── index.ts          # MCP entry: JSON-RPC 2.0, auth, dispatch
+│       ├── index.ts          # MCP entry point: JSON-RPC 2.0, auth, dispatch
 │       ├── auth.ts           # OAuth token refresh + in-memory cache
 │       ├── gmail.ts          # Gmail REST API wrapper
 │       ├── drive.ts          # Drive REST API wrapper
 │       ├── confirmation.ts   # Stateless HMAC confirmation tokens
-│       ├── audit.ts          # Fire-and-forget логирование
+│       ├── audit.ts          # Fire-and-forget logging
 │       └── tools/
 │           ├── gmail_tools.ts
 │           └── drive_tools.ts
 ├── migrations/
 │   └── 20260511_personal_google_mcp_audit.sql
 └── scripts/
-    └── personal_google_auth.ts   # альтернатива OAuth Playground через CLI
+    └── personal_google_auth.ts   # a CLI alternative to OAuth Playground
 ```
 
-Архитектура повторяет [Open Brain MCP](https://github.com/izomba-lang/open-brain-overview) — тот же Supabase-проект, тот же `MCP_ACCESS_KEY`, один деплой-пайплайн.
+Architecture mirrors [Open Brain MCP](https://github.com/izomba-lang/open-brain-overview) — same Supabase project, same `MCP_ACCESS_KEY`, one deploy pipeline.
 
-Если нужен код для своей реализации — стучись напрямую.
+If you need the code for your own implementation, reach out directly.
 
-## Ссылки
+## Links
 
 - Gmail REST API docs: https://developers.google.com/gmail/api/reference/rest
 - Drive REST API docs: https://developers.google.com/drive/api/reference/rest/v3

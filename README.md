@@ -1,158 +1,157 @@
 # Open Brain
 
-Персональная AI-память с автоматической wiki. Кидаешь мысли через Telegram, звонки, почту, чаты — система сохраняет, связывает и каждую ночь компилирует в структурированную wiki, которую читаешь в Obsidian.
+A personal AI memory system with an automatically-compiled wiki. You drop thoughts in via Telegram, calls, email, and chat — the system stores them, links them together, and compiles them every night into a structured wiki you read in Obsidian.
 
-## Как это работает
+## How it works
 
 ```
-                    ВВОД (автоматический)                          ВЫВОД
+                    INPUT (automatic)                                OUTPUT
    ┌──────────────────────────────────────┐
-   │  Telegram-бот    (текст, голосовые)  │
-   │  Zoom/Meet       (Granola транскрипт)│       ┌─────────────────────────┐
-   │  Gmail           (письма, тредки)    │──────>│     Open Brain DB       │
-   │  Slack           (сообщения)         │       │  PostgreSQL + pgvector  │
-   │  AI-клиент       (Claude, ChatGPT)   │       │  ~1500 мыслей/мес       │
-   │  Chrome          (закладки, заметки) │       └───────────┬─────────────┘
+   │  Telegram bot    (text, voice)       │
+   │  Zoom/Meet       (Granola transcript)│       ┌─────────────────────────┐
+   │  Gmail           (emails, threads)   │──────>│     Open Brain DB       │
+   │  Slack           (messages)          │       │  PostgreSQL + pgvector  │
+   │  AI client       (Claude, ChatGPT)   │       │  ~1500 thoughts/month   │
+   │  Chrome          (bookmarks, notes)  │       └───────────┬─────────────┘
    └──────────────────────────────────────┘                   │
                                                               │
                                           ┌───────────────────┼───────────────────┐
                                           │                   │                   │
                                           ▼                   ▼                   ▼
-                                    MCP-сервер          Wiki Compiler        Telegram-бот
-                                   (30 инструментов)   (ночная сборка)      (/today, /tasks)
+                                    MCP server           Wiki Compiler        Telegram bot
+                                   (30 tools)           (nightly build)      (/today, /tasks)
                                           │                   │                   │
                                           ▼                   ▼                   ▼
-                                   Claude Desktop        Obsidian             Мобильный
-                                   Cursor, Claude Code   (brain-wiki)        уведомления
+                                   Claude Desktop        Obsidian              Mobile
+                                   Cursor, Claude Code   (brain-wiki)        notifications
 ```
 
-## Слои системы
+## System layers
 
-### 1. Захват (автопилот)
-Ты работаешь как обычно. Мысли попадают в базу автоматически:
-- **Telegram-бот** — кинул текст или голосовое, сохранилось как мысль с авто-категоризацией
-- **Granola** — записал звонок, транскрипт ночью попадает в базу
-- **Gmail** — письма, ждущие твоего ответа, ежеутренне попадают в базу одной мыслью на письмо
-- **Календарь** — встречи на сегодня и завтра автоматически синхронизируются (одна мысль на событие)
-- **AI-клиент** — сказал Claude "запомни что..." — `capture_thought` сохранит
-- **Chrome-расширение** — новая вкладка с топ-3 задачами на день
+### 1. Capture (autopilot)
+You work as usual. Thoughts land in the database automatically:
+- **Telegram bot** — send text or voice, it's saved as a thought with auto-categorization
+- **Granola** — record a call, the transcript lands in the database overnight
+- **Gmail** — emails waiting for your reply are pulled in every morning, one thought per email
+- **Calendar** — today's and tomorrow's meetings sync automatically (one thought per event)
+- **AI client** — tell Claude "remember that..." — `capture_thought` saves it
+- **Chrome extension** — new-tab page shows your top 3 tasks for the day
 
-### 2. Синтез (ночной робот)
-Каждую ночь Wiki Compiler:
-1. Проверяет, по каким сущностям (страны, люди, компании, топики) появились новые мысли
-2. Собирает все мысли по сущности, отправляет Claude Sonnet 4
-3. Claude генерирует markdown-страницу: TL;DR, открытые вопросы, ключевые решения, противоречия
-4. Страница коммитится в GitHub-репо `brain-wiki`
-5. Стоимость: ~$0.15 за страницу, ~$3 за полный прогон 20 сущностей
+### 2. Synthesis (the nightly robot)
+Every night the Wiki Compiler:
+1. Checks which entities (countries, people, companies, topics) have new thoughts
+2. Gathers all thoughts for an entity and sends them to Claude Sonnet 4
+3. Claude generates a markdown page: TL;DR, open questions, key decisions, contradictions
+4. The page is committed to the `brain-wiki` GitHub repo
+5. Cost: ~$0.15 per page, ~$3 for a full run over 20 entities
 
-### 3. Чтение (Obsidian)
-Утром открываешь Obsidian — свежая wiki с кросс-ссылками и Graph View:
-- `countries/germany.md` — всё что знаешь про конкретный рынок
-- `people/ivanov.md` — история взаимодействия с контактом
-- `topics/tax-planning.md` — тематическая сводка
-- `_contradictions.md` — где данные конфликтуют между собой
-- Секция **Артефакты** — кликабельные ссылки на документы, расчёты, презентации
+### 3. Reading (Obsidian)
+Open Obsidian in the morning to a fresh wiki with cross-links and a Graph View:
+- `countries/germany.md` — everything you know about a specific market
+- `people/ivanov.md` — interaction history with a contact
+- `topics/tax-planning.md` — a topic summary
+- `_contradictions.md` — where the data conflicts with itself
+- An **Artifacts** section — clickable links to documents, spreadsheets, presentations
 
-### 4. Проактивный советник
-Память не только отвечает на запросы, но и сама подсказывает следующий шаг:
-- **Утренний бриф** — каждое утро короткая сводка: фокус дня, до 3 советов, предупреждения о просрочках. На каждый совет кнопки «беру / не надо / позже» — реакции копятся и подмешиваются в следующий бриф, так советник учится (feedback loop)
-- **Дедлайны** — один дайджест с задачами на ближайшие 48 часов; по понедельникам — блок просроченного с кнопкой «закрыть пачкой»
-- **Обязательства из встреч** — после звонка система вытаскивает из транскрипта твои обязательства и заводит их задачами
-- **Принцип precision > recall** — лучше промолчать, чем дать слабый совет; жёсткий лимит, чтобы не превратиться в спам
+### 4. Proactive advisor
+The memory doesn't just answer queries — it also surfaces the next step on its own:
+- **Morning brief** — a short daily summary: today's focus, up to 3 suggestions, overdue warnings. Each suggestion has "do it / skip / later" buttons — reactions accumulate and feed the next brief, so the advisor learns over time (feedback loop)
+- **Deadlines** — a single digest of tasks due in the next 48 hours; on Mondays, an overdue-items block with a "clear in bulk" button
+- **Commitments from meetings** — after a call, the system pulls your commitments out of the transcript and turns them into tasks
+- **Precision over recall** — better to stay silent than offer a weak suggestion; a hard cap keeps it from turning into spam
 
-## MCP-сервер (30 инструментов)
+## MCP server (30 tools)
 
-Подключается к любому AI-клиенту (Claude Desktop, Cursor, Claude Code, ChatGPT):
+Connects to any AI client (Claude Desktop, Cursor, Claude Code, ChatGPT):
 
-| Категория | Инструменты |
+| Category | Tools |
 |---|---|
-| Поиск и чтение | `search_thoughts`, `list_thoughts`, `thought_stats` |
-| Запись | `capture_thought`, `update_thought`, `delete_thought` |
-| Люди | `manage_person`, `list_people`, `delete_person`, `merge_person`, `manage_alias` |
-| Проекты | `manage_project`, `list_projects`, `delete_project` |
-| Скиллы | `route_task`, `list_skills`, `manage_skill`, `import_skill` |
+| Search & read | `search_thoughts`, `list_thoughts`, `thought_stats` |
+| Write | `capture_thought`, `update_thought`, `delete_thought` |
+| People | `manage_person`, `list_people`, `delete_person`, `merge_person`, `manage_alias` |
+| Projects | `manage_project`, `list_projects`, `delete_project` |
+| Skills | `route_task`, `list_skills`, `manage_skill`, `import_skill` |
 | Wiki | `compile_wiki`, `manage_wiki_entity`, `manage_artifact` |
-| Здоровье | `get_health_summary`, `get_health_trend`, `correlate_health_thoughts` |
-| Другое | `get_style_profile`, `voice_call` |
+| Health | `get_health_summary`, `get_health_trend`, `correlate_health_thoughts` |
+| Other | `get_style_profile`, `voice_call` |
 
-## Скиллы (15+)
+## Skills (15+)
 
-Готовые "рецепты" для задач. Claude автоматически находит подходящий через `route_task`:
+Ready-made "recipes" for common tasks. Claude finds the right one automatically via `route_task`:
 
-- **Коммуникация:** draft-email, follow-up, text-quality-pipeline
-- **Менеджмент:** meeting-brief, weekly-report, delegate-task, decision-log
-- **Продукт:** product-manager, plan-ceo-review, executive-summary-generator
-- **Разработка:** code-reviewer, office-hours
+- **Communication:** draft-email, follow-up, text-quality-pipeline
+- **Management:** meeting-brief, weekly-report, delegate-task, decision-log
+- **Product:** product-manager, plan-ceo-review, executive-summary-generator
+- **Development:** code-reviewer, office-hours
 
-Можно создавать свои (`manage_skill`) или импортировать из GitHub (`import_skill`).
+You can create your own (`manage_skill`) or import them from GitHub (`import_skill`).
 
-## Стек
+## Stack
 
-| Компонент | Технология |
+| Component | Technology |
 |---|---|
 | Runtime | Deno (Supabase Edge Functions) |
-| База данных | PostgreSQL + pgvector (1536-dim embeddings) |
-| Embeddings | `text-embedding-3-small` через OpenRouter |
+| Database | PostgreSQL + pgvector (1536-dim embeddings) |
+| Embeddings | `text-embedding-3-small` via OpenRouter |
 | Wiki Compiler | Claude Sonnet 4 (Anthropic API) |
-| Wiki хранилище | GitHub (private repo) |
-| Wiki читалка | Obsidian + Obsidian Git plugin |
-| Протокол | MCP (JSON-RPC 2.0 over HTTP) |
-| Голосовые | Groq Whisper (STT) |
-| Звонки | Vapi (voice agent) |
+| Wiki storage | GitHub (private repo) |
+| Wiki reader | Obsidian + Obsidian Git plugin |
+| Protocol | MCP (JSON-RPC 2.0 over HTTP) |
+| Voice | Groq Whisper (STT) |
+| Calls | Vapi (voice agent) |
 
-## Стоимость
+## Cost
 
-| Компонент | Стоимость |
+| Component | Cost |
 |---|---|
-| Supabase | Free tier (500MB, 500K invocations/мес) |
-| OpenRouter (embeddings) | ~$0.001/мысль |
-| Wiki Compiler (Anthropic) | ~$3/полный прогон, ~$0.50/ночь incremental |
-| Groq (голосовые) | Free tier |
-| Telegram | Бесплатно |
-| **Итого** | **~$15-20/мес при активном использовании** |
+| Supabase | Free tier (500MB, 500K invocations/month) |
+| OpenRouter (embeddings) | ~$0.001/thought |
+| Wiki Compiler (Anthropic) | ~$3/full run, ~$0.50/night incremental |
+| Groq (voice) | Free tier |
+| Telegram | Free |
+| **Total** | **~$15–20/month with active use** |
 
-## Быстрый старт
+## Quick start
 
-Подробный гайд: **[SETUP-GUIDE.md](SETUP-GUIDE.md)**
+Detailed guide: **[SETUP-GUIDE.md](SETUP-GUIDE.md)**
 
-Краткий план:
-1. Создать проект в Supabase
-2. Выполнить SQL-миграции (pgvector, таблицы, функции)
-3. Получить API-ключи (OpenRouter, Telegram, Anthropic)
-4. Задеплоить Edge Functions через Supabase CLI
-5. Настроить Telegram webhook
-6. Подключить MCP к AI-клиенту
-7. (Опционально) Настроить brain-wiki + Obsidian
+Short version:
+1. Create a Supabase project
+2. Run the SQL migrations (pgvector, tables, functions)
+3. Get API keys (OpenRouter, Telegram, Anthropic)
+4. Deploy the Edge Functions via the Supabase CLI
+5. Set up the Telegram webhook
+6. Connect the MCP server to your AI client
+7. (Optional) Set up brain-wiki + Obsidian
 
-## Структура репо
+## Repo structure
 
 ```
 open-brain-overview/
-├── README.md                      ← этот файл
-├── SETUP-GUIDE.md                 ← пошаговый гайд настройки
-├── ONBOARDING.md                  ← краткий Quick Start
-├── PERSONAL-GOOGLE-MCP-SETUP.md   ← настройка Google MCP (Gmail, Calendar, Drive)
+├── README.md                      ← this file
+├── SETUP-GUIDE.md                 ← step-by-step setup guide
+├── ONBOARDING.md                  ← short Quick Start
+├── PERSONAL-GOOGLE-MCP-SETUP.md   ← setting up a personal Google MCP (Gmail, Calendar, Drive)
 ├── src/
-│   ├── supabase/                  ← SQL-миграции и Edge Functions
-│   ├── deploy.sh                  ← скрипт деплоя
-│   └── chrome-extension/          ← Chrome new tab extension
-└── skills/                        ← готовые скиллы для импорта
+│   ├── supabase/                  ← SQL migrations and Edge Functions
+│   └── deploy.sh                  ← deploy script
+└── skills/                        ← ready-made skills to import
 ```
 
-## Примеры использования
+## Usage examples
 
-**Через Telegram:**
-- Кинул текст — сохранилось как мысль
-- `?что я решил по проекту X` — поиск по базе
-- `/today` — план на день из задач и встреч
-- `/call позвони и забронируй стол на 4 человека` — голосовой агент
+**Via Telegram:**
+- Send text — it's saved as a thought
+- `?what did I decide about project X` — search the database
+- `/today` — today's plan from tasks and meetings
+- `/call call and book a table for 4` — voice agent
 
-**Через AI-клиент (Claude Desktop / Cursor):**
-- "Подготовь бриф к встрече с партнёром" — `route_task` найдёт skill `meeting-brief`
-- "Что я знаю про налоговое планирование?" — `search_thoughts` по базе
-- "Добавь Аргентина в wiki" — `manage_wiki_entity` + `compile_wiki`
-- "Прикрепи финмодель к проекту" — `manage_artifact`
+**Via an AI client (Claude Desktop / Cursor):**
+- "Prepare a brief for the partner meeting" — `route_task` finds the `meeting-brief` skill
+- "What do I know about tax planning?" — `search_thoughts` over the database
+- "Add Argentina to the wiki" — `manage_wiki_entity` + `compile_wiki`
+- "Attach the financial model to the project" — `manage_artifact`
 
-## Лицензия
+## License
 
-MIT. Форкай, адаптируй под себя.
+MIT. Fork it, adapt it.

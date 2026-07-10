@@ -1,21 +1,21 @@
 # Open Brain — Setup Guide
 
-Гайд по настройке собственной системы Open Brain с нуля. Open Brain — персональная AI-память: ты скидываешь мысли, задачи, заметки через Telegram или Slack, а система их сохраняет, связывает между собой и отвечает на вопросы по твоей базе знаний.
+A guide to setting up your own Open Brain system from scratch. Open Brain is a personal AI memory: you drop thoughts, tasks, and notes in via Telegram or Slack, and the system stores them, links them together, and answers questions against your own knowledge base.
 
 ---
 
-## Что ты получишь
+## What you get
 
-- **Telegram-бот** — кидаешь текст или голосовое, бот сохраняет как "мысль" с автоматической категоризацией
-- **Команды**: `/today` (план на день), `/tasks` (список задач), вопросы к базе знаний
-- **MCP-сервер** — подключается к Claude Desktop, ChatGPT, Cursor и любому AI-клиенту
-- **Семантический поиск** — ищет по смыслу, а не по словам
-- **Система скиллов** — готовые "рецепты" для задач: meeting-brief, follow-up, weekly-report и другие. Можно создавать свои и импортировать из GitHub
+- **Telegram bot** — send text or voice, the bot saves it as a "thought" with automatic categorization
+- **Commands**: `/today` (daily plan), `/tasks` (task list), questions against the knowledge base
+- **MCP server** — connects to Claude Desktop, ChatGPT, Cursor, and any AI client
+- **Semantic search** — searches by meaning, not by keyword
+- **Skills system** — ready-made "recipes" for tasks: meeting-brief, follow-up, weekly-report, and more. You can create your own and import from GitHub
 
-## Архитектура
+## Architecture
 
 ```
-Telegram / Slack / AI-клиент
+Telegram / Slack / AI client
         ↓
   Supabase Edge Functions (Deno)
         ↓
@@ -26,25 +26,25 @@ Telegram / Slack / AI-клиент
 
 ---
 
-## Шаг 1. Создай проект в Supabase
+## Step 1. Create a Supabase project
 
-1. Зарегистрируйся на [supabase.com](https://supabase.com)
-2. Создай новый проект, запомни:
-   - **Project ref** (в URL: `https://supabase.com/dashboard/project/<project-ref>`)
-   - **Region** (выбирай ближайший к себе)
-3. Дождись инициализации проекта (~2 минуты)
+1. Sign up at [supabase.com](https://supabase.com)
+2. Create a new project and note down:
+   - **Project ref** (in the URL: `https://supabase.com/dashboard/project/<project-ref>`)
+   - **Region** (pick the one closest to you)
+3. Wait for the project to initialize (~2 minutes)
 
-## Шаг 2. Настрой базу данных
+## Step 2. Set up the database
 
-Открой **SQL Editor** в Supabase Dashboard и выполни по очереди:
+Open the **SQL Editor** in the Supabase Dashboard and run these one at a time:
 
-### 2.1. Включи pgvector
+### 2.1. Enable pgvector
 
 ```sql
 create extension if not exists vector with schema extensions;
 ```
 
-### 2.2. Создай таблицу thoughts
+### 2.2. Create the thoughts table
 
 ```sql
 create table public.thoughts (
@@ -56,15 +56,15 @@ create table public.thoughts (
   updated_at timestamptz default now()
 );
 
--- Индекс для быстрого векторного поиска
+-- Index for fast vector search
 create index thoughts_embedding_idx on public.thoughts
   using hnsw (embedding vector_cosine_ops);
 
--- Индекс для JSON-запросов по metadata
+-- Index for JSON queries against metadata
 create index thoughts_metadata_idx on public.thoughts
   using gin (metadata);
 
--- Автообновление updated_at
+-- Auto-update updated_at
 create or replace function update_updated_at()
 returns trigger as $$
 begin
@@ -78,7 +78,7 @@ create trigger thoughts_updated_at
   for each row execute function update_updated_at();
 ```
 
-### 2.3. Создай таблицу people
+### 2.3. Create the people table
 
 ```sql
 create table public.people (
@@ -97,7 +97,7 @@ create trigger people_updated_at
   for each row execute function update_updated_at();
 ```
 
-### 2.4. Создай таблицу projects
+### 2.4. Create the projects table
 
 ```sql
 create table public.projects (
@@ -116,7 +116,7 @@ create trigger projects_updated_at
   for each row execute function update_updated_at();
 ```
 
-### 2.5. Создай таблицу skills
+### 2.5. Create the skills table
 
 ```sql
 create table if not exists skills (
@@ -134,14 +134,14 @@ create table if not exists skills (
   updated_at timestamptz not null default now()
 );
 
--- Индекс для семантического поиска скиллов
+-- Index for semantic skill search
 create index if not exists skills_embedding_idx on skills
   using hnsw (embedding extensions.vector_cosine_ops);
 
 create index if not exists skills_category_idx on skills (category);
 ```
 
-### 2.6. Создай функцию семантического поиска
+### 2.6. Create the semantic search function
 
 ```sql
 create or replace function match_thoughts(
@@ -169,7 +169,7 @@ as $$
 $$;
 ```
 
-### 2.7. Создай функцию поиска скиллов
+### 2.7. Create the skill search function
 
 ```sql
 create or replace function match_skills(
@@ -212,7 +212,7 @@ end;
 $$;
 ```
 
-### 2.8. Отключи RLS (для Edge Functions с service role)
+### 2.8. Turn on RLS (for Edge Functions using the service role)
 
 ```sql
 alter table public.thoughts enable row level security;
@@ -220,103 +220,103 @@ alter table public.people enable row level security;
 alter table public.projects enable row level security;
 alter table public.skills enable row level security;
 
--- Edge Functions используют service_role key, который обходит RLS
--- Если хочешь дополнительную защиту, добавь policies
+-- Edge Functions use the service_role key, which bypasses RLS
+-- If you want extra protection, add explicit policies
 ```
 
-## Шаг 3. Получи API-ключи
+## Step 3. Get your API keys
 
-Тебе понадобятся:
+You'll need:
 
-| Сервис | Что получить | Где |
+| Service | What to get | Where |
 |--------|-------------|-----|
-| **OpenRouter** | API Key | [openrouter.ai/keys](https://openrouter.ai/keys) — нужен для embeddings и LLM |
-| **Telegram** | Bot Token | [@BotFather](https://t.me/BotFather) — создай нового бота |
-| **Telegram** | Твой User ID | [@userinfobot](https://t.me/userinfobot) — чтобы бот работал только для тебя |
-| **Groq** | API Key | [console.groq.com](https://console.groq.com) — для транскрипции голосовых |
+| **OpenRouter** | API Key | [openrouter.ai/keys](https://openrouter.ai/keys) — needed for embeddings and the LLM |
+| **Telegram** | Bot Token | [@BotFather](https://t.me/BotFather) — create a new bot |
+| **Telegram** | Your User ID | [@userinfobot](https://t.me/userinfobot) — so the bot only works for you |
+| **Groq** | API Key | [console.groq.com](https://console.groq.com) — for voice transcription |
 
-Придумай свой **MCP_ACCESS_KEY** — любая длинная случайная строка, которая будет паролем к API (например, сгенерируй через `openssl rand -hex 24`).
+Make up your own **MCP_ACCESS_KEY** — any long random string that acts as the password to the API (e.g. generate one with `openssl rand -hex 24`).
 
-## Шаг 4. Установи Supabase CLI
+## Step 4. Install the Supabase CLI
 
 ```bash
 # macOS
 brew install supabase/tap/supabase
 
-# или npm
+# or npm
 npm install -g supabase
 ```
 
-Залогинься:
+Log in:
 
 ```bash
 supabase login
 ```
 
-## Шаг 5. Создай проект и задеплой
+## Step 5. Create the project and deploy
 
-### 5.1. Создай структуру проекта
+### 5.1. Get the project structure
 
-Весь исходный код лежит в папке [`src/`](src/) этого репозитория. Скопируй его к себе:
+All the source code lives in the [`src/`](src/) folder of this repository. Copy it to your machine:
 
 ```bash
-# Вариант 1: клонируй этот репозиторий
+# Option 1: clone this repository
 git clone https://github.com/izomba-lang/open-brain-overview.git
 cd open-brain-overview/src
 
-# Вариант 2: скачай только src/ через GitHub
+# Option 2: download just the src/ folder from GitHub
 ```
 
-Структура:
+Structure:
 ```
 src/
 ├── supabase/functions/
-│   ├── open-brain-mcp/index.ts       ← MCP-сервер (15 инструментов)
-│   ├── ingest-thought-telegram/index.ts ← Telegram-бот
-│   └── ingest-thought/index.ts        ← Slack-пайплайн (опционально)
-├── supabase/migrations/               ← SQL-миграция для skills
-└── deploy.sh                          ← Скрипт деплоя с версионированием
+│   ├── open-brain-mcp/index.ts        ← MCP server (15 tools)
+│   ├── ingest-thought-telegram/index.ts ← Telegram bot
+│   └── ingest-thought/index.ts         ← Slack pipeline (optional)
+├── supabase/migrations/                ← SQL migration for skills
+└── deploy.sh                           ← Versioned deploy script
 ```
 
-### 5.2. Инициализируй Supabase-проект
+### 5.2. Initialize the Supabase project
 
 ```bash
 cd src
 supabase init
-supabase link --project-ref <твой-project-ref>
+supabase link --project-ref <your-project-ref>
 ```
 
-### 5.3. Установи секреты
+### 5.3. Set the secrets
 
 ```bash
 supabase secrets set \
   OPENROUTER_API_KEY="sk-or-..." \
-  MCP_ACCESS_KEY="<твой_сгенерированный_ключ>" \
+  MCP_ACCESS_KEY="<your_generated_key>" \
   TELEGRAM_BOT_TOKEN="123456:ABC-DEF..." \
   TELEGRAM_ALLOWED_USER_ID="123456789" \
   GROQ_API_KEY="gsk_..."
 ```
 
-### 5.4. Задеплой функции
+### 5.4. Deploy the functions
 
 ```bash
 supabase functions deploy open-brain-mcp --no-verify-jwt
 supabase functions deploy ingest-thought-telegram --no-verify-jwt
 ```
 
-Slack-функция опциональна:
+The Slack function is optional:
 ```bash
 supabase functions deploy ingest-thought --no-verify-jwt
 ```
 
-Или используй скрипт деплоя:
+Or use the deploy script:
 ```bash
-bash deploy.sh  # деплоит все функции + версионирование
+bash deploy.sh  # deploys all functions + versioning
 ```
 
-## Шаг 6. Подключи Telegram-бота
+## Step 6. Connect the Telegram bot
 
-Установи webhook — замени `<project-ref>` на свой:
+Set the webhook — replace `<project-ref>` with your own:
 
 ```bash
 curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
@@ -324,14 +324,14 @@ curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
   -d '{"url": "https://<project-ref>.supabase.co/functions/v1/ingest-thought-telegram"}'
 ```
 
-Проверь:
+Verify:
 ```bash
 curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
 ```
 
-Теперь напиши боту в Telegram — он должен ответить!
+Now message the bot on Telegram — it should reply!
 
-## Шаг 7. Проверь MCP-сервер
+## Step 7. Check the MCP server
 
 ```bash
 curl -s -X POST "https://<project-ref>.supabase.co/functions/v1/open-brain-mcp?key=<MCP_ACCESS_KEY>" \
@@ -339,13 +339,13 @@ curl -s -X POST "https://<project-ref>.supabase.co/functions/v1/open-brain-mcp?k
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"thought_stats","arguments":{}}}'
 ```
 
-Должен вернуть JSON с пустой статистикой.
+Should return JSON with empty stats.
 
-## Шаг 8. Подключи к AI-клиентам
+## Step 8. Connect your AI clients
 
 ### Claude Desktop
 
-Добавь в `~/Library/Application Support/Claude/claude_desktop_config.json`:
+Add this to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
@@ -363,11 +363,11 @@ curl -s -X POST "https://<project-ref>.supabase.co/functions/v1/open-brain-mcp?k
 }
 ```
 
-> Или используй любой MCP-клиент, который поддерживает HTTP transport.
+> Or use any MCP client that supports HTTP transport.
 
 ### Cursor
 
-Создай файл `.cursor/mcp.json` в корне проекта:
+Create a `.cursor/mcp.json` file at the root of your project:
 
 ```json
 {
@@ -381,113 +381,113 @@ curl -s -X POST "https://<project-ref>.supabase.co/functions/v1/open-brain-mcp?k
 
 ### Claude Code
 
-Добавь в настройки MCP-серверов:
+Add to your MCP server settings:
 - **URL**: `https://<project-ref>.supabase.co/functions/v1/open-brain-mcp?key=<MCP_ACCESS_KEY>`
 - **Transport**: HTTP (JSON-RPC 2.0)
 
 ---
 
-## Как пользоваться
+## How to use it
 
-### Telegram-бот
+### Telegram bot
 
-| Действие | Что делать |
+| Action | What to do |
 |----------|-----------|
-| Сохранить мысль | Просто напиши текст |
-| Голосовая заметка | Отправь голосовое сообщение |
-| Переслать | Перешли сообщение — сохранится с пометкой |
-| Задать вопрос | Начни с `?` или задай вопрос ("Что мы решили про...?") |
-| План на день | `/today` |
-| Список задач | `/tasks` |
+| Save a thought | Just send text |
+| Voice note | Send a voice message |
+| Forward something | Forward a message — it's saved with a marker |
+| Ask a question | Start with `?` or ask a question ("What did we decide about...?") |
+| Daily plan | `/today` |
+| Task list | `/tasks` |
 
-### MCP-сервер (15 инструментов, через AI-клиента)
+### MCP server (15 tools, via an AI client)
 
-- **"Запомни: завтра встреча с Петей в 15:00"** → `capture_thought`
-- **"Что я знаю про налоги?"** → `search_thoughts`
-- **"Покажи открытые задачи"** → `list_thoughts` (type: task)
-- **"Отметь задачу X как выполненную"** → `update_thought`
-- **"Создай проект Ремонт квартиры"** → `manage_project`
-- **"Подготовь бриф к встрече"** → `route_task` → подберёт скилл `meeting-brief`
-- **"Какие скиллы есть?"** → `list_skills`
-- **"Импортируй скилл из GitHub"** → `import_skill` (URL или текст)
+- **"Remember: meeting with Peter tomorrow at 3pm"** → `capture_thought`
+- **"What do I know about taxes?"** → `search_thoughts`
+- **"Show my open tasks"** → `list_thoughts` (type: task)
+- **"Mark task X as done"** → `update_thought`
+- **"Create a project called Apartment Renovation"** → `manage_project`
+- **"Prepare a brief for the meeting"** → `route_task` → picks the `meeting-brief` skill
+- **"What skills are available?"** → `list_skills`
+- **"Import a skill from GitHub"** → `import_skill` (URL or text)
 
 ---
 
-## Скиллы — готовые рецепты для задач
+## Skills — ready-made recipes for tasks
 
-Скилл — это инструкция для AI, которая описывает шаги для конкретной задачи. Когда ты говоришь "подготовь бриф к встрече", `route_task` находит подходящий скилл и даёт AI готовый промпт.
+A skill is a set of instructions for the AI describing the steps for a specific task. When you say "prepare a brief for the meeting," `route_task` finds the right skill and hands the AI a ready-made prompt.
 
-### Предустановленные скиллы
+### Built-in skills
 
-| Скилл | Что делает |
+| Skill | What it does |
 |-------|-----------|
-| `meeting-brief` | Собирает заметки, участников и задачи в бриф перед встречей |
-| `follow-up` | Формирует письмо-фоллоуап после встречи в твоём стиле |
-| `weekly-report` | Генерирует еженедельный отчёт из заметок за неделю |
-| `delegate-task` | Составляет чёткую постановку задачи для делегирования |
-| `decision-log` | Фиксирует решение с контекстом, альтернативами и обоснованием |
-| `draft-email` | Пишет email в твоём стиле на основе контекста из базы |
+| `meeting-brief` | Pulls together notes, participants, and tasks into a pre-meeting brief |
+| `follow-up` | Drafts a follow-up email after a meeting in your writing style |
+| `weekly-report` | Generates a weekly report from the week's notes |
+| `delegate-task` | Writes a clear task description for delegation |
+| `decision-log` | Records a decision with context, alternatives, and rationale |
+| `draft-email` | Writes an email in your style, based on context from the database |
 
-### Импорт скиллов
+### Importing skills
 
-Можно импортировать скиллы из GitHub — система автоматически адаптирует их:
+You can import skills from GitHub — the system adapts them automatically:
 
 ```
-# Через AI-клиента (Claude Desktop, Cursor и т.д.):
-"Импортируй скилл из https://github.com/user/repo/blob/main/SKILL.md"
+# Via an AI client (Claude Desktop, Cursor, etc.):
+"Import the skill from https://github.com/user/repo/blob/main/SKILL.md"
 ```
 
-Или через MCP напрямую — `import_skill` принимает URL или текст описания скилла.
+Or directly via MCP — `import_skill` accepts a URL or a text description of the skill.
 
-### Создание своих скиллов
+### Creating your own skills
 
-Через AI-клиента:
+Via an AI client:
 ```
-"Создай скилл standup-summary: собирает задачи за последние 24 часа,
-группирует по проектам, формирует краткий отчёт для стендапа"
+"Create a standup-summary skill: gathers tasks from the last 24 hours,
+groups them by project, produces a short standup report"
 ```
 
-Или через `manage_skill` с описанием, trigger_patterns и промптом.
+Or via `manage_skill` with a description, trigger_patterns, and a prompt.
 
 ---
 
-## Стоимость
+## Cost
 
-| Сервис | Стоимость |
+| Service | Cost |
 |--------|----------|
-| Supabase | Free tier: 500MB БД, 500K Edge Function invocations/мес |
-| OpenRouter | ~$0.001 за embedding, ~$0.005 за metadata extraction |
-| Groq | Free tier: достаточно для голосовых |
-| Telegram | Бесплатно |
+| Supabase | Free tier: 500MB database, 500K Edge Function invocations/month |
+| OpenRouter | ~$0.001 per embedding, ~$0.005 per metadata extraction |
+| Groq | Free tier: plenty for voice |
+| Telegram | Free |
 
-На практике при активном использовании (50-100 мыслей/день) — **меньше $1/мес** на OpenRouter.
+In practice, with active use (50–100 thoughts/day) — **under $1/month** on OpenRouter.
 
 ---
 
 ## Troubleshooting
 
-### Бот не отвечает
+### The bot isn't responding
 ```bash
-# Проверь логи
+# Check the logs
 supabase functions logs ingest-thought-telegram --project-ref <ref>
 
-# Проверь webhook
+# Check the webhook
 curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 ```
 
-### MCP возвращает 401
-Проверь, что `MCP_ACCESS_KEY` совпадает с тем, что передаёшь в `?key=`.
+### MCP returns 401
+Check that `MCP_ACCESS_KEY` matches what you're passing in `?key=`.
 
-### Поиск ничего не находит
-Убедись, что pgvector extension включен и `match_thoughts` функция создана. Попробуй уменьшить threshold до 0.3.
+### Search finds nothing
+Make sure the pgvector extension is enabled and the `match_thoughts` function was created. Try lowering the threshold to 0.3.
 
 ---
 
-## Кастомизация
+## Customization
 
-- **Язык** — бот на русском. Чтобы переключить на английский, поменяй строки в `ingest-thought-telegram/index.ts`
-- **Стиль письма** — сохрани мысль с `source: "style_analysis"` через `capture_thought`, и AI будет использовать твой стиль при генерации текстов
-- **Slack-интеграция** — задеплой `ingest-thought`, создай Slack App с Event Subscriptions, укажи URL функции
+- **Language** — the bot defaults to Russian. To switch to English, change the strings in `ingest-thought-telegram/index.ts`
+- **Writing style** — save a thought with `source: "style_analysis"` via `capture_thought`, and the AI will use your style when generating text
+- **Slack integration** — deploy `ingest-thought`, create a Slack App with Event Subscriptions, and point it at the function's URL
 
 ---
 
