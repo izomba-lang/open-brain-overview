@@ -6,7 +6,6 @@ A personal AI memory system built on Supabase + pgvector. You send thoughts in v
 
 - **Telegram bot** — text or voice -> a thought with auto-categorization; `/today`, `/tasks` commands
 - **MCP server** — 15+ tools for Claude Desktop, Cursor, Claude Code
-- **Chrome extension** — new-tab page with your top 3 tasks
 - **Skills system** — meeting-brief, follow-up, weekly-report, and 12 more ready-made recipes
 
 ## Architecture
@@ -21,7 +20,7 @@ PostgreSQL + pgvector
 OpenRouter API (embeddings + LLM)
 ```
 
-## Setup: 9 steps
+## Setup: 8 steps
 
 Detailed guide: https://github.com/izomba-lang/open-brain-overview/blob/main/SETUP-GUIDE.md
 
@@ -35,7 +34,6 @@ Short version:
 6. **Deploy** — `supabase link`, `supabase secrets set ...`, `supabase functions deploy`
 7. **Telegram webhook** — `curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" ...`
 8. **AI client** — connect the MCP server to Claude Desktop / Cursor / Claude Code
-9. **Chrome extension** — load unpacked from `src/chrome-extension/`
 
 ## Cost
 

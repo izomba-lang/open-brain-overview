@@ -8,11 +8,11 @@ A personal AI memory system with an automatically-compiled wiki. You drop though
                     INPUT (automatic)                                OUTPUT
    ┌──────────────────────────────────────┐
    │  Telegram bot    (text, voice)       │
-   │  Zoom/Meet       (Granola transcript)│       ┌─────────────────────────┐
+   │  Calls/meetings  (Plaud recorder)    │       ┌─────────────────────────┐
    │  Gmail           (emails, threads)   │──────>│     Open Brain DB       │
    │  Slack           (messages)          │       │  PostgreSQL + pgvector  │
    │  AI client       (Claude, ChatGPT)   │       │  ~1500 thoughts/month   │
-   │  Chrome          (bookmarks, notes)  │       └───────────┬─────────────┘
+   │  Calendar        (meetings, events)  │       └───────────┬─────────────┘
    └──────────────────────────────────────┘                   │
                                                               │
                                           ┌───────────────────┼───────────────────┐
@@ -31,11 +31,12 @@ A personal AI memory system with an automatically-compiled wiki. You drop though
 ### 1. Capture (autopilot)
 You work as usual. Thoughts land in the database automatically:
 - **Telegram bot** — send text or voice, it's saved as a thought with auto-categorization
-- **Granola** — record a call, the transcript lands in the database overnight
+- **Plaud recorder** — record a call or an in-person meeting, the transcript lands in the database overnight, with speakers identified by voice
 - **Gmail** — emails waiting for your reply are pulled in every morning, one thought per email
 - **Calendar** — today's and tomorrow's meetings sync automatically (one thought per event)
 - **AI client** — tell Claude "remember that..." — `capture_thought` saves it
-- **Chrome extension** — new-tab page shows your top 3 tasks for the day
+
+Meeting capture runs through a separate poller that talks to the Plaud API; it is not part of the code published here.
 
 ### 2. Synthesis (the nightly robot)
 Every night the Wiki Compiler:
