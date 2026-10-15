@@ -271,10 +271,12 @@ cd open-brain-overview/src
 ```
 src/
 ├── supabase/functions/
-│   ├── open-brain-mcp/index.ts       ← MCP-сервер (15 инструментов)
+│   ├── open-brain-mcp/                ← MCP-сервер (27 инструментов)
 │   ├── ingest-thought-telegram/index.ts ← Telegram-бот
-│   └── ingest-thought/index.ts        ← Slack-пайплайн (опционально)
-├── supabase/migrations/               ← SQL-миграция для skills
+│   ├── ingest-thought/index.ts        ← Slack-пайплайн (опционально)
+│   ├── compile-wiki/index.ts          ← компилятор вики (опционально, см. MODULES.md)
+│   └── _shared/                       ← общие модули (LLM, людей, алерты)
+├── supabase/migrations/               ← схема поверх шага 2: вики, алиасы людей, транскрипты, гибридный поиск
 └── deploy.sh                          ← Скрипт деплоя с версионированием
 ```
 
@@ -297,7 +299,17 @@ supabase secrets set \
   GROQ_API_KEY="gsk_..."
 ```
 
-### 5.4. Задеплой функции
+### 5.4. Накати миграции
+
+Таблицы из шага 2 — это минимум. Часть MCP-тулов (гибридный поиск, люди, транскрипты, вики) ждёт схему из `supabase/migrations/`:
+
+```bash
+supabase db push
+```
+
+Или вставь файлы по очереди в SQL Editor. Что в каком файле — в `supabase/migrations/README.md`.
+
+### 5.5. Задеплой функции
 
 ```bash
 supabase functions deploy open-brain-mcp --no-verify-jwt
@@ -400,7 +412,7 @@ curl -s -X POST "https://<project-ref>.supabase.co/functions/v1/open-brain-mcp?k
 | План на день | `/today` |
 | Список задач | `/tasks` |
 
-### MCP-сервер (15 инструментов, через AI-клиента)
+### MCP-сервер (27 инструментов, через AI-клиента)
 
 - **"Запомни: завтра встреча с Петей в 15:00"** → `capture_thought`
 - **"Что я знаю про налоги?"** → `search_thoughts`
