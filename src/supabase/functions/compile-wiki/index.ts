@@ -3,6 +3,7 @@ import { USER_NAME, USER_TITLE, USER_EMPLOYER } from "../_shared/persona_config.
 import { callLLM, SYNTH_MODEL, TASK_MODEL, estimateCost, MODEL_PRICES } from "../_shared/llm.ts";
 import { startJobRun, finishJobRun } from "../_shared/alert.ts";
 import { matchesWholeWord } from "../_shared/text_match.ts";
+import { agoLabel, cutoffDate } from "../_shared/dates.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseKey = Deno.env.get("SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -13,6 +14,44 @@ const GITHUB_REPO = Deno.env.get("GITHUB_REPO") || "";
 const MCP_ACCESS_KEY = Deno.env.get("MCP_ACCESS_KEY") || "";
 
 const MAX_CONCURRENCY = 1;
+
+// Supabase Edge Functions are killed at a ~150s wall clock. Sonnet generates at
+// roughly 45-50 output tok/s, so the old maxTokens=8192 alone needed ~175s —
+// the invocation died mid-generation, AFTER Anthropic had already billed the
+// tokens, and before anything was written to wiki_compile_runs / wiki_entities /
+// GitHub. Because last_compiled_at never advanced, the next cron tick picked the
+// SAME entity and paid again, every 10 minutes, indefinitely. Diagnosed
+// 2026-07-25: 890 runs stuck in status='running' since 2026-05-23 against 403
+// successes; the half-dozen largest entities (200-300 thoughts each) could never
+// complete even once.
+//
+// These two caps keep a single compile comfortably inside the limit. Measured:
+// 17 thoughts / 2.9k out = 62s, 76 thoughts / ~5k out = 148s (the ceiling).
+const MAX_OUTPUT_TOKENS = 4096;   // ~90s of generation, leaves headroom for I/O
+// 60 still overran the output cap on the largest pages (measured: 60 thoughts ->
+// stop_reason=max_tokens, page cut mid-sentence). Page length tracks thought
+// count closely, so this is the lever that keeps generation inside the cap.
+const MAX_THOUGHTS_PER_COMPILE = 35;
+
+// Wall-clock budget tracking. Set at the top of each request so every check is
+// relative to when THIS invocation started, not to module load (Edge Function
+// instances are reused across requests, so a module-level timestamp would drift).
+let invocationStart = Date.now();
+const elapsedMs = () => Date.now() - invocationStart;
+// Past this point a second full generation (the delta-regression retry) cannot
+// finish before the kill, so it is skipped rather than paid for and thrown away.
+const SECOND_CALL_DEADLINE_MS = 45_000;
+
+// Фаза 21: бюджет на ЦИКЛ, а не только на второй вызов. Компиляция сущности —
+// это полный проход Sonnet: начинать её, когда до предела осталось меньше её
+// типичной длительности, значит гарантированно оплатить работу, которую убьют.
+// Замерено на живых прогонах: 62–148с на сущность, поэтому запас крупный.
+const LOOP_BUDGET_MS = 105_000;
+const PER_ENTITY_MS = 60_000;
+
+// A page is a rolling synthesis: the LLM always receives the existing page plus
+// the most recent slice of thoughts, so history survives in the page text even
+// though older thoughts drop out of the context window.
 
 // ─── Types ───
 
@@ -29,6 +68,9 @@ interface WikiEntity {
   status: string;
   error_count: number;
   next_retry_at: string | null;
+  // Несёт либо текст ошибки, либо маркер «attempt in progress since …», который
+  // пишется ПЕРЕД LLM-вызовом. По нему видно попытку, убитую по wall clock.
+  last_error: string | null;
 }
 
 interface CompileRun {
@@ -141,18 +183,25 @@ async function getFileContent(filePath: string): Promise<string | null> {
 
 // ─── LLM caller (delegates to shared module) ───
 
+// Wiki compilation bills against its own Anthropic key (separate from the one
+// daily-brief uses) so token consumption is visible per-feature in the
+// Anthropic console. Optional: falls back to the shared ANTHROPIC_API_KEY
+// in llm.ts if this one isn't set.
+const WIKI_ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY_WIKI") || undefined;
+
 async function callCompileLLM(
   systemPrompt: string,
   userMessage: string,
   model?: string,
-  maxTokens = 8192,
-): Promise<{ text: string; input_tokens: number; output_tokens: number; model: string }> {
+  maxTokens = MAX_OUTPUT_TOKENS,
+): Promise<{ text: string; input_tokens: number; output_tokens: number; model: string; stop_reason?: string }> {
   return callLLM({
     model: model || SYNTH_MODEL,
     system: systemPrompt,
     user: userMessage,
     maxTokens,
     maxRetries: 5,
+    apiKeyOverride: WIKI_ANTHROPIC_KEY,
   });
 }
 
@@ -231,8 +280,8 @@ const COMPILER_SYSTEM_PROMPT = `Ты — Wiki Compiler для Open Brain ${USER_
 ## Связанные сущности
 [[link]] на людей, страны, компании, топики.
 
-## Последние события (последние 30 дней)
-Свежие thoughts кратко, со ссылкой на тип.`;
+## Последние события
+Свежие thoughts кратко, со ссылкой на тип. Границу свежести не вычисляй — она дана во входных данных.`;
 
 // ─── Delta compiler system prompt ───
 
@@ -251,7 +300,7 @@ const DELTA_SYSTEM_PROMPT = `Ты — Wiki Compiler (delta mode) для Open Bra
 - Добавляй provenance для новых данных: (источник: <type>, <date>, <id-8>).
 - Если новые thoughts противоречат существующим — добавь в секцию "⚠️ Противоречия".
 - Обнови TL;DR если новые данные существенно меняют картину.
-- Обнови "Последние события" — добавь новые, убери старше 30 дней.
+- Обнови "Последние события" — добавь новые, убери те, чья дата РАНЬШЕ границы свежести (она дана во входных данных). Сам возраст записей не вычисляй.
 - Обнови "Открытые вопросы" — закрой решённые, добавь новые.
 - Если предоставлены артефакты — обнови секцию "Артефакты".
 - Язык — русский, деловой, без hedging.
@@ -305,9 +354,14 @@ async function resolveEntityCanonical(
 
 async function loadEntityContext(
   entity: WikiEntity,
-  deltaOnly = false
+  deltaOnly = false,
+  // Chronology mode reads the entity's ENTIRE history: no LLM call follows, so
+  // neither the per-query limits (tuned to keep a prompt small) nor
+  // MAX_THOUGHTS_PER_COMPILE apply. Everything else keeps the old behaviour.
+  fullHistory = false,
 ): Promise<ThoughtContext> {
   const since = entity.last_thought_seen_at || "1970-01-01T00:00:00Z";
+  const qLimit = (normal: number) => (fullHistory ? 2000 : normal);
 
   // deltaOnly: load only thoughts newer than last compilation
   // Used for incremental updates when existing page exists
@@ -342,7 +396,7 @@ async function loadEntityContext(
       if (deltaOnly) linkedQuery = linkedQuery.gt("updated_at", filterSince);
       const { data: linkedThoughts } = await linkedQuery
         .order("updated_at", { ascending: false })
-        .limit(200);
+        .limit(qLimit(200));
 
       // Also query by text mentions in metadata.people (string array)
       // for thoughts that weren't properly linked
@@ -353,7 +407,7 @@ async function loadEntityContext(
       if (deltaOnly) mentionQuery = mentionQuery.gt("updated_at", filterSince);
       const { data: mentionThoughts } = await mentionQuery
         .order("updated_at", { ascending: false })
-        .limit(50);
+        .limit(qLimit(50));
 
       const seen = new Set<string>();
       for (const t of [...(linkedThoughts || []), ...(mentionThoughts || [])]) {
@@ -381,7 +435,7 @@ async function loadEntityContext(
       if (deltaOnly) q = q.gt("updated_at", filterSince);
       const { data } = await q
         .order("updated_at", { ascending: false })
-        .limit(100);
+        .limit(qLimit(100));
 
       if (data) {
         const seen = new Set(allThoughts.map(t => t.id));
@@ -413,7 +467,7 @@ async function loadEntityContext(
       if (deltaOnly) q = q.gt("updated_at", filterSince);
       const { data } = await q
         .order("updated_at", { ascending: false })
-        .limit(100);
+        .limit(qLimit(100));
 
       if (data) {
         const seen = new Set(allThoughts.map(t => t.id));
@@ -428,20 +482,41 @@ async function loadEntityContext(
     }
   }
 
+  // Never let identity/banking documents reach a compiled artifact. Entity
+  // attribution here is substring-based, so a note only has to MENTION the
+  // employer to be pulled into its page — that is how a passport record and a
+  // set of bank account details ended up in a company chronology (2026-07-25):
+  // both merely cited the employer when explaining what the document was for.
+  // Filtering on the flag rather than on the matched entity means it holds no
+  // matter which page the thought attaches to. The thoughts stay in the DB and
+  // remain reachable via search_thoughts.
+  allThoughts = allThoughts.filter((t: any) => t.metadata?.sensitive !== true);
+
   // Sort by updated_at desc, keep max 200
   allThoughts.sort((a, b) =>
     new Date(b.updated_at || b.created_at).getTime() -
     new Date(a.updated_at || a.created_at).getTime()
   );
 
-  // Always keep ALL decision/insight/reflection regardless of limit
+  // Prefer decision/insight/reflection, but no longer keep them ALL regardless of
+  // the limit — an entity with 100+ decisions used to blow straight past the wall
+  // clock on that exemption alone (see MAX_THOUGHTS_PER_COMPILE). Both lists are
+  // already sorted newest-first, so each slice keeps the freshest of its kind.
   const critical = allThoughts.filter((t: any) =>
     ["decision", "insight", "reflection"].includes(t.metadata?.type)
   );
   const rest = allThoughts.filter((t: any) =>
     !["decision", "insight", "reflection"].includes(t.metadata?.type)
   );
-  const kept = [...critical, ...rest.slice(0, 200 - critical.length)];
+  // fullHistory (chronology) keeps everything — the cap exists only to bound an
+  // LLM prompt, and no LLM call follows in that mode.
+  const keptCritical = fullHistory ? critical : critical.slice(0, MAX_THOUGHTS_PER_COMPILE);
+  const kept = fullHistory
+    ? [...critical, ...rest]
+    : [
+        ...keptCritical,
+        ...rest.slice(0, Math.max(0, MAX_THOUGHTS_PER_COMPILE - keptCritical.length)),
+      ];
 
   const newCount = kept.filter(
     (t: any) => new Date(t.updated_at || t.created_at) > new Date(since)
@@ -491,6 +566,119 @@ async function loadEntityContext(
   };
 }
 
+// ─── Identifier redaction (safety net) ───
+
+// The metadata.sensitive flag is the primary guard, but it is only as good as
+// whatever set it — a new thought carrying an ID number reaches a compiled
+// artifact before anything has a chance to classify it. So every thought body
+// that leaves for GitHub (chronology entries) or for the LLM (compile prompts)
+// gets its known identifiers masked regardless of the flag. Patterns cover a
+// typical document set: Israeli Teudat Zehut, Russian passports, IBANs — add
+// your own country's ID formats here. Deliberately narrow — a broad \d{9} rule would eat
+// order numbers and revenue figures.
+const REDACTIONS: Array<[RegExp, string]> = [
+  [/\b(?:AE|IL|RU|GB|DE|FR|ES|IT|NL|CH|CY|KZ)\d{2}[\s-]?(?:[A-Z0-9][\s-]?){10,30}/g, "[IBAN скрыт]"],
+  // Russian internal passport: "12 34 № 567890". Anchor on the NUMBER SHAPE,
+  // not on a neighbouring word — an earlier version keyed off "Серия" and the
+  // model then reformatted the record into a table cell that dropped the word,
+  // letting the number through on the next rebuild. 2+2 digits, a № / N / No
+  // separator, then exactly 6 digits is specific enough not to eat figures.
+  [/\b\d{2}\s?\d{2}\s*(?:№|N°|No\.?|N)\s*\d{6}\b/gi, "[номер документа скрыт]"],
+  [/((?:ת\.?ז|T\.?Z\.?|теудат\s+зеут|тевудат\s+зеут)[^0-9]{0,12})\d{9}/gi, "$1[ID скрыт]"],
+];
+
+function redactIdentifiers(text: string): string {
+  let out = text;
+  for (const [re, replacement] of REDACTIONS) out = out.replace(re, replacement);
+  return out;
+}
+
+// ─── Chronology mode (no LLM) ───
+
+// A chronology is a mechanical, exhaustive dump: every thought the entity has,
+// oldest first, grouped by month. Deliberately NOT an LLM synthesis — the
+// synthesized page is capped by the wall clock and drops its oldest sections,
+// which is exactly what makes it useless for "what happened, in order". Costs
+// nothing, has no time limit, and never loses an entry.
+const RU_MONTHS = [
+  "январь", "февраль", "март", "апрель", "май", "июнь",
+  "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь",
+];
+
+function chronologyPath(entity: WikiEntity): string {
+  return `chronicles/${entity.slug}.md`;
+}
+
+function buildChronology(entity: WikiEntity, context: ThoughtContext): string {
+  const sorted = [...context.thoughts].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
+  const out: string[] = [];
+  out.push(`# Хронология: ${entity.canonical}`);
+  out.push("");
+  out.push(`> Полная выгрузка всех мыслей по сущности, от старых к новым.`);
+  out.push(`> Записей: ${sorted.length}. Собрано: ${new Date().toISOString().slice(0, 10)}.`);
+  out.push(`> Это механический дамп без синтеза — смысловая страница лежит в \`${entity.file_path}\`.`);
+  out.push("");
+
+  let currentMonth = "";
+  for (const t of sorted) {
+    const d = new Date(t.created_at);
+    const monthKey = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    if (monthKey !== currentMonth) {
+      currentMonth = monthKey;
+      out.push("");
+      out.push(`## ${RU_MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`);
+      out.push("");
+    }
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const type = (t.metadata?.type as string) || "note";
+    // Newlines inside a thought would break the list item; flatten them.
+    const body = redactIdentifiers(t.content.replace(/\s*\n+\s*/g, " ").trim());
+    out.push(`- **${day}.${month}** \`[${type}]\` ${body} <sub>${t.id.slice(0, 8)}</sub>`);
+  }
+
+  out.push("");
+  return out.join("\n");
+}
+
+async function compileChronology(entityFilter: string): Promise<{
+  status: string;
+  entity: string;
+  entries: number;
+  file_path: string;
+  cost_usd: number;
+}> {
+  const { data } = await supabase
+    .from("wiki_entities")
+    .select("*")
+    .or(`canonical.ilike.%${entityFilter}%,slug.ilike.%${entityFilter}%`)
+    .limit(1);
+
+  const entity = (data || [])[0] as WikiEntity | undefined;
+  if (!entity) throw new Error(`entity not found: ${entityFilter}`);
+
+  const context = await loadEntityContext(entity, false, true);
+  if (context.total === 0) throw new Error(`no thoughts found for ${entity.canonical}`);
+
+  const filePath = chronologyPath(entity);
+  await commitToGitHub(
+    filePath,
+    buildChronology(entity, context),
+    `Chronology: ${entity.canonical} (${context.total} entries)`
+  );
+
+  return {
+    status: "success",
+    entity: entity.canonical,
+    entries: context.total,
+    file_path: filePath,
+    cost_usd: 0,
+  };
+}
+
 // ─── Build compiler prompt ───
 
 function buildCompilerPrompt(
@@ -511,7 +699,11 @@ function buildCompilerPrompt(
   } else {
     parts.push(`- Всего thoughts: ${context.total} (новых: ${context.new_count})`);
   }
-  parts.push(`- Дата компиляции: ${new Date().toISOString()}\n`);
+  parts.push(`- Дата компиляции: ${new Date().toISOString().slice(0, 10)}`);
+  // Готовая граница вместо «30 дней»: сравнить две даты модель умеет надёжно,
+  // вычесть их — нет.
+  parts.push(`- Граница свежести для секции «Последние события»: ${cutoffDate(30, new Date())} (всё, что раньше — убрать)`);
+  parts.push(`- Давность каждой записи посчитана и указана рядом с её датой. НЕ вычисляй интервалы сам, не переводи дни в недели и месяцы; если готовой формулировки нет — не делай утверждения о сроке.\n`);
 
   if (context.related_entities.length > 0) {
     parts.push(`## Связанные сущности (упоминаются ≥3 раз)`);
@@ -535,6 +727,7 @@ function buildCompilerPrompt(
     parts.push("```\n");
   }
 
+  const now = new Date();
   const label = isDelta ? `Новые thoughts` : `Thoughts`;
   parts.push(`## ${label} (${context.total} штук, отсортированы по дате, новые первыми)\n`);
 
@@ -545,9 +738,13 @@ function buildCompilerPrompt(
     const date = t.created_at.slice(0, 10);
     const shortId = t.id.slice(0, 8);
 
-    parts.push(`### [${type}] ${date} (${shortId})`);
+    // Фаза 20: давность считает код. Прежде запись несла только голую дату, а
+    // промпт требовал «убери старше 30 дней» — то есть модель вычитала даты в
+    // уме по каждой записи. Ровно так бриф однажды назвал пятидневную
+    // просрочку «больше двух недель» (v1.83.1).
+    parts.push(`### [${type}] ${date} · ${agoLabel(t.created_at, now)} (${shortId})`);
     if (topic) parts.push(`topic: ${topic}`);
-    parts.push(t.content);
+    parts.push(redactIdentifiers(t.content));
     parts.push("---");
   }
 
@@ -583,9 +780,20 @@ async function getTouchedEntities(force: boolean): Promise<WikiEntity[]> {
   if (error) throw new Error(`getTouchedEntities: ${error.message}`);
   if (!entities || entities.length === 0) return [];
 
-  // Separate pending (always compile) from active (need new-thought check)
-  const pending = entities.filter(e => e.status === "pending");
-  const active = entities.filter(e => e.status !== "pending");
+  // Separate pending (always compile) from active (need new-thought check).
+  //
+  // Фаза 21: незавершённая попытка возвращается в кандидаты НАРАВНЕ с pending,
+  // не дожидаясь новых мыслей. Раньше убитая по wall clock компиляция оставляла
+  // маркер «attempt in progress» и backoff, но попасть в отбор снова могла
+  // только если по сущности придут новые мысли — а по редко упоминаемым их может
+  // не быть месяцами. Наблюдалось 26.07: две сущности застряли в «attempt in
+  // progress since 17:1x», окно ретрая истекло в 17:33/17:36, и четыре
+  // последующих прогона крона взяли entities_touched: 0.
+  const stalledAttempt = (e: WikiEntity) =>
+    typeof e.last_error === "string" && e.last_error.startsWith("attempt in progress");
+
+  const pending = entities.filter((e) => e.status === "pending" || stalledAttempt(e));
+  const active = entities.filter((e) => e.status !== "pending" && !stalledAttempt(e));
 
   if (active.length === 0) return pending;
 
@@ -863,7 +1071,10 @@ async function compileEntity(
 ): Promise<void> {
   // Decide: delta or full compilation
   // Delta when: existing page exists + entity was compiled before + not forced full
-  const existingPage = dryRun ? null : await getFileContent(entity.file_path);
+  // Redacted on the way in as well, so the model never sees an identifier it
+  // could paraphrase past the output filter.
+  const existingPageRaw = dryRun ? null : await getFileContent(entity.file_path);
+  const existingPage = existingPageRaw === null ? null : redactIdentifiers(existingPageRaw);
   const canDelta = !forceFull && existingPage && entity.last_compiled_at;
 
   let context: ThoughtContext;
@@ -917,20 +1128,86 @@ async function compileEntity(
     return;
   }
 
+  // Claim the attempt BEFORE spending money. If this invocation is killed
+  // mid-generation (wall clock), nothing downstream of the LLM call ever runs —
+  // no run row, no wiki_entities update, no GitHub commit — so without this the
+  // entity looked untouched and the next tick paid for it again, forever. Writing
+  // the backoff up front means a killed attempt still costs the entity its retry
+  // slot, and repeated kills widen the window instead of hammering every 10 min.
+  // Cleared on success below, so a healthy entity is unaffected.
+  const attemptCount = (entity.error_count ?? 0) + 1;
+  const attemptBackoffMin = Math.min(Math.pow(2, attemptCount) * 10, 6 * 60);
+  await supabase
+    .from("wiki_entities")
+    .update({
+      error_count: attemptCount,
+      next_retry_at: new Date(Date.now() + attemptBackoffMin * 60_000).toISOString(),
+      last_error: `attempt in progress since ${new Date().toISOString()}`,
+    })
+    .eq("id", entity.id);
+
   let result = await callCompileLLM(systemPrompt, prompt);
 
   // Quality gate: a delta build rewrites the existing page from a small diff; if
   // it dropped headings or shrank the page drastically, the model mangled it.
   // Recompile in full mode (from all thoughts) and use that instead — precision
   // over speed, a mangled page is worse than an extra LLM call.
-  if (isDelta && existingPage) {
+  // Skipped when the first call already ate most of the wall clock: a second
+  // full generation would be killed anyway, wasting its tokens and losing the
+  // usable (if imperfect) page we already have.
+  if (isDelta && existingPage && elapsedMs() < SECOND_CALL_DEADLINE_MS) {
     const regression = deltaRegression(existingPage, result.text);
     if (regression) {
       console.warn(`[quality] delta regressed for ${entity.canonical} (${regression}) — full recompile`);
       context = await loadEntityContext(entity, false);
       const fullPrompt = buildCompilerPrompt(entity, context, existingPage, false);
+      // The discarded first call was still billed — bank its tokens before
+      // overwriting `result`, otherwise the run under-reports its real cost.
+      run.tokens_in += result.input_tokens;
+      run.tokens_out += result.output_tokens;
       result = await callCompileLLM(COMPILER_SYSTEM_PROMPT, fullPrompt);
       isDelta = false;
+    }
+  }
+
+  // A max_tokens stop means the page is cut mid-sentence. Committing that
+  // verbatim corrupts the wiki (observed on the largest entity: the page ended
+  // "…должность"). Trim back to the last complete section instead — a slightly
+  // short but well-formed page beats a truncated one, and the dropped sections
+  // are the oldest entries, which the next compile will re-emit.
+  // Redact the OUTPUT, not just the thoughts feeding the prompt: a delta compile
+  // hands the model the existing page and it copies content forward verbatim, so
+  // an identifier already committed by an earlier build survives every later
+  // rebuild unless it is stripped here (observed on a personal-documents page, which
+  // still carried passport numbers after a full recompile).
+  let pageText = redactIdentifiers(result.text);
+  if (result.stop_reason === "max_tokens") {
+    // Look for BOTH heading levels. The old code searched only "\n### ", but
+    // COMPILER_SYSTEM_PROMPT asks for "## " sections (TL;DR, Контекст, Ключевые
+    // решения…) — "### " appears in the INPUT context that feeds thought entries
+    // to the model, not in the page it writes back. So on any page where the
+    // model emitted no sub-headings the trim found nothing and threw, and the
+    // entity could never compile again: error_count grew, backoff spaced the
+    // retries out, and every one of them still paid Sonnet in full for output
+    // that was discarded. Observed on two large entities on 2026-07-26.
+    const lastH3 = pageText.lastIndexOf("\n### ");
+    const lastH2 = pageText.lastIndexOf("\n## ");
+    const cut = Math.max(lastH3, lastH2);
+
+    // A trim that leaves almost nothing is not a page. Better to fail loudly and
+    // keep the previous version than to commit a stub over a good page.
+    const MIN_KEPT = 400;
+    if (cut > MIN_KEPT) {
+      const level = cut === lastH3 ? "###" : "##";
+      pageText = pageText.slice(0, cut).trimEnd() + "\n";
+      console.warn(
+        `[quality] ${entity.canonical}: output hit max_tokens — trimmed to last complete ${level} section (${pageText.length} chars kept)`,
+      );
+    } else {
+      throw new Error(
+        `output truncated at max_tokens and nothing usable to trim to ` +
+          `(page ${pageText.length} chars, last ## at ${lastH2}, last ### at ${lastH3})`,
+      );
     }
   }
 
@@ -941,7 +1218,7 @@ async function compileEntity(
 
   const sha = await commitToGitHub(
     entity.file_path,
-    result.text,
+    pageText,
     `${isDelta ? 'Delta' : 'Compile'}: ${entity.canonical} (+${isDelta ? context.total : context.new_count} thoughts)`
   );
 
@@ -956,7 +1233,7 @@ async function compileEntity(
       last_error: null,
       error_count: 0,
       next_retry_at: null,
-      contradictions_md: extractContradictionsSection(result.text),
+      contradictions_md: extractContradictionsSection(pageText),
     })
     .eq("id", entity.id);
 
@@ -1030,9 +1307,20 @@ async function compileWiki(opts: {
 
     console.log(`Compiling ${entities.length} of ${totalFound} entities (mode: ${mode}${opts.pick_one ? ', pick_one' : ''})`);
 
+    // Фаза 21: сколько сущностей начинать — решает ЧАСЫ, а не длина списка.
+    // Прежде цикл шёл по всем найденным и упирался в убийство по wall clock на
+    // середине очередной компиляции: токены уже оплачены, страница не записана.
+    // Теперь перед каждой сущностью спрашиваем, успеет ли она; не успевающие
+    // остаются в кандидатах и достаются следующему прогону.
+    let deferredOnBudget = 0;
+
     await mapWithConcurrency(
       entities,
       async (entity) => {
+        if (elapsedMs() + PER_ENTITY_MS > LOOP_BUDGET_MS) {
+          deferredOnBudget++;
+          return;
+        }
         try {
           await compileEntity(entity, run, opts.dry_run || false, opts.force || false);
         } catch (e) {
@@ -1059,6 +1347,10 @@ async function compileWiki(opts: {
       },
       MAX_CONCURRENCY
     );
+
+    if (deferredOnBudget > 0) {
+      console.log(`[budget] отложено сущностей до следующего прогона: ${deferredOnBudget} (прошло ${Math.round(elapsedMs() / 1000)}с)`);
+    }
 
     const finalStatus = run.error_log.length > 0
       ? run.error_log.length === entities.length ? "failed" : "partial"
@@ -1102,7 +1394,7 @@ const LINT_SYSTEM_PROMPT = `Ты — Wiki Linter для Open Brain. Анализ
 Задачи:
 1. ПРОТИВОРЕЧИЯ — факты, которые конфликтуют между страницами или внутри одной страницы.
 2. СЛЕПЫЕ ЗОНЫ — имена людей, компании или темы, часто упоминаемые в thoughts, но без wiki-страницы.
-3. УСТАРЕВШИЕ ДАННЫЕ — факты, помеченные датами более 3 месяцев назад, с пометкой "по состоянию на".
+3. УСТАРЕВШИЕ ДАННЫЕ — факты с пометкой "по состоянию на", чья дата РАНЬШЕ границы устаревания (она дана во входных данных). Возраст фактов сам не вычисляй.
 4. БИТЫЕ ССЫЛКИ — [[slug]], которые указывают на несуществующие страницы.
 5. НОВЫЕ СВЯЗИ — потенциально интересные связи между сущностями, которые не отражены.
 
@@ -1183,7 +1475,13 @@ async function lintWiki(): Promise<{
 
   const existingSlugsSection = `\nСуществующие slugs: ${[...existingSlugs].join(", ")}`;
 
+  // Фаза 20: граница вместо «3 месяца назад». Сравнить дату с готовой границей
+  // модель умеет надёжно; вычесть три месяца от сегодня — уже арифметика,
+  // которую она делает молча и иногда неверно.
   const userPrompt = `Проанализируй wiki-страницы и найди проблемы.
+
+Сегодня: ${cutoffDate(0, new Date())}
+Граница устаревания: ${cutoffDate(90, new Date())} — факты с датой раньше считаются устаревшими.
 
 ${pages.join("\n")}
 ${existingSlugsSection}
@@ -1226,6 +1524,8 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  invocationStart = Date.now();
+
   // Job-run recording is scoped to the compile path (set on startJobRun below);
   // lint mode and early errors leave it null so they don't touch job_runs.
   let runId: string | null = null;
@@ -1233,6 +1533,22 @@ Deno.serve(async (req: Request) => {
     const body = req.method === "POST"
       ? await req.json().catch(() => ({}))
       : {};
+
+    // Chronology mode — on-demand, no LLM, no job-run tracking (nothing to bill
+    // or alert on). Requires an explicit entity: a full-history dump only makes
+    // sense for one entity at a time.
+    if (body.mode === "chronology") {
+      if (!body.entity_filter) {
+        return new Response(JSON.stringify({ error: "chronology mode requires entity_filter" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      const result = await compileChronology(String(body.entity_filter));
+      return new Response(JSON.stringify(result, null, 2), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     // Lint mode — separate path, not a tracked nightly job.
     if (body.mode === "lint") {

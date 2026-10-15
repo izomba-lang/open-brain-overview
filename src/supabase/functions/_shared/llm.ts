@@ -5,7 +5,12 @@ const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
 const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY") || "";
 
 export const SYNTH_MODEL = "claude-sonnet-4-6";                 // wiki synthesis, daily brief
-export const TASK_MODEL = "qwen/qwen3-235b-a22b";              // classification, parsing, lint
+// TASK_MODEL: исходный "qwen/qwen3-235b-a22b" OpenRouter снял 09.10.2026 (404),
+// и всё, что шло через него, — capture календаря/почты, разбор Inbox, интенты
+// звонков, шаги Plaud-ингеста — молча падало. Прямой преемник 2507 в тот же день
+// отвечал 429 у всех провайдеров (туда переехали все), поэтому — рекомендованная
+// OpenRouter замена.
+export const TASK_MODEL = "qwen/qwen3.7-plus";                 // classification, parsing, lint
 export const MINI_MODEL = "openai/gpt-4o-mini";                // metadata extraction (already cheap)
 
 export interface LLMResponse {
@@ -13,12 +18,15 @@ export interface LLMResponse {
   input_tokens: number;
   output_tokens: number;
   model: string;
+  // "max_tokens" means the model was cut off mid-generation and `text` is
+  // incomplete — callers that persist the output must not treat it as final.
+  stop_reason?: string;
 }
 
 // Price per 1M tokens — for cost tracking
 export const MODEL_PRICES: Record<string, { input: number; output: number }> = {
   [SYNTH_MODEL]:  { input: 3,    output: 15   },
-  [TASK_MODEL]:   { input: 0.20, output: 0.60 },
+  [TASK_MODEL]:   { input: 0.32, output: 1.28 },
   [MINI_MODEL]:   { input: 0.15, output: 0.60 },
 };
 
@@ -32,14 +40,16 @@ async function callAnthropic(
   userMessage: string,
   maxTokens: number,
   maxRetries: number,
+  apiKeyOverride?: string,
 ): Promise<LLMResponse> {
-  if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY not configured");
+  const apiKey = apiKeyOverride || ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured");
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
+        "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
         "content-type": "application/json",
       },
@@ -71,6 +81,7 @@ async function callAnthropic(
       input_tokens: data.usage?.input_tokens || 0,
       output_tokens: data.usage?.output_tokens || 0,
       model,
+      stop_reason: data.stop_reason,
     };
   }
   throw new Error("Anthropic API: max retries exceeded on 429");
@@ -95,6 +106,10 @@ async function callOpenRouter(
       body: JSON.stringify({
         model,
         max_tokens: maxTokens,
+        // qwen3.7-plus по умолчанию рассуждает: на capture-промпте 79 с thinking
+        // съели весь max_tokens, content пришёл пустым. Для структурных задач
+        // рассуждение не нужно — выключаем.
+        ...(model === TASK_MODEL ? { reasoning: { enabled: false } } : {}),
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
@@ -132,12 +147,16 @@ export async function callLLM(opts: {
   user: string;
   maxTokens?: number;
   maxRetries?: number;
+  // Per-caller Anthropic key override — lets separate features (e.g. wiki vs
+  // speaker diarization) bill against distinct API keys for token tracking in
+  // the Anthropic console. Ignored for non-Anthropic models.
+  apiKeyOverride?: string;
 }): Promise<LLMResponse> {
   const maxTokens = opts.maxTokens ?? 2048;
   const maxRetries = opts.maxRetries ?? 3;
 
   if (isAnthropicModel(opts.model)) {
-    return callAnthropic(opts.model, opts.system, opts.user, maxTokens, maxRetries);
+    return callAnthropic(opts.model, opts.system, opts.user, maxTokens, maxRetries, opts.apiKeyOverride);
   }
   return callOpenRouter(opts.model, opts.system, opts.user, maxTokens, maxRetries);
 }

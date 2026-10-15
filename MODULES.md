@@ -8,19 +8,17 @@
 
 | Модуль | Код в `src/` | Схема БД в `src/` или SETUP-GUIDE |
 |---|---|---|
-| `open-brain-mcp` (27 тулов) | ✅ | частично: `thoughts`, `people`, `projects`, `skills`, `match_thoughts`, `match_skills` |
+| `open-brain-mcp` (27 тулов) | ✅ | ✅ кроме здоровья: SETUP-GUIDE + `src/supabase/migrations/` |
 | `ingest-thought-telegram` (бот) | ✅ (ранняя версия) | ✅ |
 | `ingest-thought` (Slack) | ✅ | ✅ |
-| `compile-wiki` | ✅ (без защиты от wall clock, см. ниже) | ❌ |
-| `_shared/` (llm, ingest, people, topic_prompt, alert, text_match, voice/intent) | ✅ | — |
+| `compile-wiki` | ✅ | ✅ `src/supabase/migrations/` |
+| `_shared/` (llm, ingest, people, topic_prompt, alert, text_match, dates, voice/intent) | ✅ | — |
 | Всё остальное в этом документе | ❌ только описание | ❌ |
 
-Тулы MCP, которым нужны таблицы вне SETUP-GUIDE (`wiki_entities`, `entity_aliases`, `person_aliases`, `artifacts`, `raw_transcripts`, `health_metrics_daily`, `health_workouts`, `call_tasks`, `call_events`, RPC `hybrid_match_thoughts`, `search_transcripts`, `find_similar_person` и др.), без них вернут ошибку. `search_thoughts` при отсутствии `hybrid_match_thoughts` откатывается на `match_thoughts` и работает.
+Схема вне SETUP-GUIDE лежит в [`src/supabase/migrations/`](src/supabase/migrations/README.md): вики (`wiki_entities`, `entity_aliases`, `wiki_compile_runs`, `artifacts`), люди (`person_aliases`, `find_similar_person`, `merge_linked_people`), `raw_transcripts` + `search_transcripts`, `hybrid_match_thoughts`, `job_runs`, звонки (`call_tasks`, `call_messages`, `call_events`). Не опубликованы таблицы здоровья (`health_metrics_daily`, `health_workouts`) — тулы здоровья без них вернут ошибку. Функции звонков (`voice-trigger-call`, `voice-vapi-webhook`) в `src/` нет: схема есть, но `voice_call` без них создаст задачу и упадёт на вызове.
 
 ### Расхождения опубликованного кода с боевым
 
-- **`_shared/llm.ts`: `TASK_MODEL = "qwen/qwen3-235b-a22b"`.** OpenRouter снял эту модель 09.10.2026, вызовы отвечают 404. В боевом инстансе стоит `qwen/qwen3.7-plus`. Замени до деплоя.
-- **`compile-wiki`: `maxTokens = 8192`.** Генерация не укладывается в лимит Edge Function (~150 с), функцию убивают после того, как провайдер уже списал токены. В боевом инстансе `MAX_OUTPUT_TOKENS = 4096` и `MAX_THOUGHTS_PER_COMPILE = 35`. Подробно в [LESSONS.md](LESSONS.md#1-edge-functions-wall-clock--это-деньги).
 - **Telegram-бот.** В боевом инстансе `ingest-thought-telegram` давно слит в `telegram-callback-webhook` (сообщения + кнопки + команды). Опубликована ранняя версия: захват текста и голоса, вопросы к базе, `/today`, `/tasks`.
 - **MCP:** в боевом инстансе 29 тулов. Не опубликованы `manage_asr_correction` (правила исправления ослышек в именах) и `review_context`.
 
@@ -140,7 +138,7 @@ MCP-сервер (JSON-RPC 2.0 поверх HTTP). Опубликованная 
 
 - Режимы: инкрементальный (только сущности с новыми мыслями), `pick_one` (одна сущность за вызов), `force`, полный, `chronology`, `lint`.
 - Запуск в боевом инстансе: cron `*/10 22-23,0 * * *` с `{"pick_one": true}`, то есть по одной сущности каждые 10 минут ночью. Так каждый вызов гарантированно укладывается в лимит Edge Function. Плюс тул `compile_wiki` и ручной POST.
-- Секреты: `ANTHROPIC_API_KEY` (в боевом инстансе отдельный `ANTHROPIC_API_KEY_WIKI`), `GITHUB_TOKEN`, `GITHUB_REPO`, `MCP_ACCESS_KEY`.
+- Секреты: `ANTHROPIC_API_KEY` (или отдельный `ANTHROPIC_API_KEY_WIKI`, чтобы видеть расход вики отдельно), `GITHUB_TOKEN`, `GITHUB_REPO`, `MCP_ACCESS_KEY`, `OWNER_TZ` (таймзона для границы «свежих событий», по умолчанию UTC).
 - Таблицы: `wiki_entities` (реестр страниц), `entity_aliases` (алиасы для не-людей), `person_aliases`, `wiki_compile_runs` (аудит прогонов), `artifacts` (ссылки на документы, привязанные к сущности). Миграций для них в этом репо нет.
 - Привязка мыслей: люди — через `person_aliases`, остальное — через `entity_aliases` + поиск по содержимому с границами слов (`_shared/text_match.ts`).
 
@@ -237,6 +235,7 @@ call_tasks  ──(кнопка «Звонить»)──>  voice-trigger-call  
 
 - `voice-trigger-call`: исходящий звонок через `api.vapi.ai`; голос, язык распознавания и приветствие задаются по языку (RU, EN, HE). Секреты: `VAPI_API_KEY`, `VAPI_ASSISTANT_ID`, `VAPI_PHONE_NUMBER_ID`, `USER_NAME`, `USER_DEFAULT_CONTEXT`.
 - `voice-vapi-webhook`: принимает события Vapi (проверка `VAPI_WEBHOOK_SECRET`), логирует, уведомляет в Telegram, сохраняет итог мыслью через `capture_thought`.
+- Схема: `src/supabase/migrations/20260502000000_voice_agent.sql`.
 - Ассистент и его тулы регистрируются в Vapi одноразовым скриптом; в боевом инстансе голос — ElevenLabs.
 - Стоимость в доках не зафиксирована: смотри прайс Vapi, телефонного номера и голосового провайдера.
 
