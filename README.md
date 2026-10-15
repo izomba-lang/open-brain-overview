@@ -19,7 +19,7 @@ A personal AI memory system with an automatically-compiled wiki. You drop though
                                           │                   │                   │
                                           ▼                   ▼                   ▼
                                     MCP server           Wiki Compiler        Telegram bot
-                                   (30 tools)           (nightly build)      (/today, /tasks)
+                                   (27 tools)           (nightly build)      (/today, /tasks)
                                           │                   │                   │
                                           ▼                   ▼                   ▼
                                    Claude Desktop        Obsidian              Mobile
@@ -36,12 +36,12 @@ You work as usual. Thoughts land in the database automatically:
 - **Calendar** — today's and tomorrow's meetings sync automatically (one thought per event)
 - **AI client** — tell Claude "remember that..." — `capture_thought` saves it
 
-Meeting capture runs through a separate poller that talks to the Plaud API; it is not part of the code published here.
+Meeting capture runs through a separate poller that talks to the Plaud API; it is not part of the code published here. [MODULES.md](MODULES.md) describes how it works.
 
 ### 2. Synthesis (the nightly robot)
 Every night the Wiki Compiler:
 1. Checks which entities (countries, people, companies, topics) have new thoughts
-2. Gathers all thoughts for an entity and sends them to Claude Sonnet 4
+2. Gathers all thoughts for an entity and sends them to Claude Sonnet
 3. Claude generates a markdown page: TL;DR, open questions, key decisions, contradictions
 4. The page is committed to the `brain-wiki` GitHub repo
 5. Cost: ~$0.15 per page, ~$3 for a full run over 20 entities
@@ -61,13 +61,13 @@ The memory doesn't just answer queries — it also surfaces the next step on its
 - **Commitments from meetings** — after a call, the system pulls your commitments out of the transcript and turns them into tasks
 - **Precision over recall** — better to stay silent than offer a weak suggestion; a hard cap keeps it from turning into spam
 
-## MCP server (30 tools)
+## MCP server (27 tools)
 
-Connects to any AI client (Claude Desktop, Cursor, Claude Code, ChatGPT):
+Connects to any AI client (Claude Desktop, Cursor, Claude Code, ChatGPT). The code in `src/` ships 27 tools; the author's production instance has 29 (plus `manage_asr_correction` and `review_context`, not published yet):
 
 | Category | Tools |
 |---|---|
-| Search & read | `search_thoughts`, `list_thoughts`, `thought_stats` |
+| Search & read | `search_thoughts`, `list_thoughts`, `thought_stats`, `get_transcript` |
 | Write | `capture_thought`, `update_thought`, `delete_thought` |
 | People | `manage_person`, `list_people`, `delete_person`, `merge_person`, `manage_alias` |
 | Projects | `manage_project`, `list_projects`, `delete_project` |
@@ -76,12 +76,12 @@ Connects to any AI client (Claude Desktop, Cursor, Claude Code, ChatGPT):
 | Health | `get_health_summary`, `get_health_trend`, `correlate_health_thoughts` |
 | Other | `get_style_profile`, `voice_call` |
 
-## Skills (15+)
+## Skills (15)
 
-Ready-made "recipes" for common tasks. Claude finds the right one automatically via `route_task`:
+Ready-made "recipes" for common tasks. Claude finds the right one automatically via `route_task`. All 15 are exported to [`skills/library/`](skills/library/) with import instructions:
 
-- **Communication:** draft-email, follow-up, text-quality-pipeline
-- **Management:** meeting-brief, weekly-report, delegate-task, decision-log
+- **Communication:** draft-email, email-writer, follow-up, text-quality-pipeline, ru-deck-editor
+- **Management:** meeting-brief, weekly-report, delegate-task, decision-log, weekly-engineering-retrospective
 - **Product:** product-manager, plan-ceo-review, executive-summary-generator
 - **Development:** code-reviewer, office-hours
 
@@ -94,7 +94,7 @@ You can create your own (`manage_skill`) or import them from GitHub (`import_ski
 | Runtime | Deno (Supabase Edge Functions) |
 | Database | PostgreSQL + pgvector (1536-dim embeddings) |
 | Embeddings | `text-embedding-3-small` via OpenRouter |
-| Wiki Compiler | Claude Sonnet 4 (Anthropic API) |
+| Wiki Compiler | Claude Sonnet 4.6 (Anthropic API) |
 | Wiki storage | GitHub (private repo) |
 | Wiki reader | Obsidian + Obsidian Git plugin |
 | Protocol | MCP (JSON-RPC 2.0 over HTTP) |
@@ -132,11 +132,13 @@ open-brain-overview/
 ├── README.md                      ← this file
 ├── SETUP-GUIDE.md                 ← step-by-step setup guide
 ├── ONBOARDING.md                  ← short Quick Start
+├── MODULES.md                     ← map of every module beyond the core, in setup order
+├── LESSONS.md                     ← operational lessons and incidents
 ├── PERSONAL-GOOGLE-MCP-SETUP.md   ← setting up a personal Google MCP (Gmail, Calendar, Drive)
 ├── src/
 │   ├── supabase/                  ← SQL migrations and Edge Functions
 │   └── deploy.sh                  ← deploy script
-└── skills/                        ← ready-made skills to import
+└── skills/                        ← companion skill + skill library to import
 ```
 
 ## Usage examples
